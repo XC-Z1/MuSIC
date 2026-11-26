@@ -1,0 +1,1196 @@
+import { parseTelegramLiveLink, validateSafeExternalUrl } from './security';
+
+export type PlaybackStatus = 'idle' | 'playing' | 'paused' | 'stopped';
+export type RepeatMode = 'off' | 'one' | 'all';
+export type AccountConnectionStatus = 'connected' | 'connecting' | 'disconnected' | 'reconnecting' | 'error';
+
+export interface TrackItem {
+  id: string;
+  title: string;
+  artist: string;
+  durationSec: number;
+  sourceType: 'direct_url' | 'stream_link' | 'mp3_upload' | 'library';
+  sourceUrl: string;
+  requestedBy: string;
+  artworkUrl: string;
+}
+
+export interface PersonalAccountState {
+  id: string;
+  displayName: string;
+  username: string;
+  phoneMasked: string;
+  status: AccountConnectionStatus;
+  online: boolean;
+  sessionEncrypted: boolean;
+  retryCount: number;
+  maxRetries: number;
+  lastHeartbeatAt: string;
+}
+
+export interface LiveSessionState {
+  active: boolean;
+  groupTitle: string;
+  groupIdentifier: string;
+  voiceChatId: string;
+  autoJoinEnabled: boolean;
+  connectionQuality: 'Stable' | 'Recovering' | 'Offline';
+  joinedAt: string | null;
+  activeStreamsCount: number;
+  maxConcurrentStreams: number;
+}
+
+export interface BotInlineButton {
+  text: string;
+  callbackData: string;
+}
+
+export interface BotMessage {
+  id: string;
+  sender: 'user' | 'bot';
+  text: string;
+  inlineKeyboard?: BotInlineButton[][];
+  timestamp: string;
+  isAnimated?: boolean;
+  animationFrames?: string[];
+  kind?: 'welcome' | 'player' | 'volume' | 'live' | 'account' | 'owner' | 'help' | 'error' | 'queue' | 'info';
+}
+
+export interface BotUserRecord {
+  id: string;
+  name: string;
+  username: string;
+  role: 'owner' | 'admin' | 'member';
+  requestsCount: number;
+  banned: boolean;
+}
+
+export interface BotGroupRecord {
+  id: string;
+  title: string;
+  identifier: string;
+  volume: number;
+  autoJoin: boolean;
+  active: boolean;
+}
+
+export interface ErrorLogEntry {
+  id: string;
+  timestamp: string;
+  component: 'webhook' | 'mtproto' | 'ffmpeg' | 'pytgcalls' | 'database';
+  message: string;
+}
+
+export interface BotSystemState {
+  botUsername: string;
+  maintenanceMode: boolean;
+  account: PersonalAccountState;
+  liveSession: LiveSessionState;
+  playback: {
+    status: PlaybackStatus;
+    currentTrack: TrackItem | null;
+    positionSec: number;
+    volume: number;
+    muted: boolean;
+    previousVolume: number;
+    repeatMode: RepeatMode;
+    queue: TrackItem[];
+    history: TrackItem[];
+  };
+  stats: {
+    totalUsers: number;
+    totalGroups: number;
+    totalMusicPlayed: number;
+    cpuPercent: number;
+    ramPercent: number;
+    backendLatencyMs: number;
+    backendOnline: boolean;
+    databaseOnline: boolean;
+  };
+  users: BotUserRecord[];
+  groups: BotGroupRecord[];
+  errorLogs: ErrorLogEntry[];
+  messages: BotMessage[];
+}
+
+export const CATALOG_ARTWORKS = [
+  '/src/assets/images/album_synth_night_1795675913750.jpg',
+  '/src/assets/images/album_dhaka_lofi_1795675914611.jpg',
+  '/src/assets/images/album_acoustic_live_1795675914818.jpg',
+];
+
+export const DEFAULT_LIBRARY_TRACKS: TrackItem[] = [
+  {
+    id: 'trk-101',
+    title: 'Midnight Signal (Studio Mix)',
+    artist: 'Aether & Kazi',
+    durationSec: 275,
+    sourceType: 'library',
+    sourceUrl: 'https://cdn.example.invalid/audio/midnight-signal.mp3',
+    requestedBy: '@owner_admin',
+    artworkUrl: CATALOG_ARTWORKS[0],
+  },
+  {
+    id: 'trk-102',
+    title: 'Monsoon Over Gulshan',
+    artist: 'Dhaka Lo-Fi Collective',
+    durationSec: 214,
+    sourceType: 'library',
+    sourceUrl: 'https://cdn.example.invalid/audio/monsoon-gulshan.mp3',
+    requestedBy: '@studio_dj',
+    artworkUrl: CATALOG_ARTWORKS[1],
+  },
+  {
+    id: 'trk-103',
+    title: 'Analog Console Sessions',
+    artist: 'Studio 48 Acoustic',
+    durationSec: 248,
+    sourceType: 'library',
+    sourceUrl: 'https://cdn.example.invalid/audio/analog-console.mp3',
+    requestedBy: '@owner_admin',
+    artworkUrl: CATALOG_ARTWORKS[2],
+  },
+];
+
+export function clampVolume(value: number): number {
+  if (!Number.isFinite(value)) return 80;
+  return Math.min(200, Math.max(10, Math.round(value)));
+}
+
+export function formatDuration(seconds: number): string {
+  const safe = Math.max(0, Math.floor(seconds));
+  const mins = Math.floor(safe / 60);
+  const secs = safe % 60;
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+export function renderProgressBar(positionSec: number, durationSec: number, width = 17): string {
+  const total = Math.max(1, durationSec);
+  const ratio = Math.min(1, Math.max(0, positionSec / total));
+  const knobIndex = Math.min(width - 1, Math.round(ratio * (width - 1)));
+  let bar = '';
+  for (let i = 0; i < width; i++) {
+    bar += i === knobIndex ? '●' : '━';
+  }
+  return bar;
+}
+
+export function buildWelcomeMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const text = [
+    '🎧 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐌𝐔𝐒𝐈𝐂 𝐁𝐎𝐓',
+    '',
+    '🎶 Your Music, Your World!',
+    '✨ Premium Music Experience',
+    '⚡ Ultra Fast Performance',
+    '🎚️ Advanced Music Controls',
+    '🎤 Auto Live Join System',
+    '🎧 Personal Account Control',
+    '🔥 Smart Music Streaming',
+  ].join('\n');
+
+  const inlineKeyboard: BotInlineButton[][] = [
+    [
+      { text: '🎵 Play Music', callbackData: 'cmd:play_prompt' },
+      { text: '🎧 Music Player', callbackData: 'cmd:player' },
+    ],
+    [
+      { text: '🎤 Auto Live Join', callbackData: 'cmd:live_panel' },
+      { text: '👤 Account Control', callbackData: 'cmd:account' },
+    ],
+    [
+      { text: '📊 Now Playing', callbackData: 'cmd:nowplaying' },
+      { text: '🎚️ Volume Control', callbackData: 'cmd:volume' },
+    ],
+    [
+      { text: '📚 Help & Commands', callbackData: 'cmd:help' },
+      { text: '👑 Bot Owner', callbackData: 'cmd:owner' },
+    ],
+  ];
+
+  return { text, inlineKeyboard };
+}
+
+export function buildPlayerMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const track = state.playback.currentTrack;
+  const volLabel = state.playback.muted ? 'Muted (0%)' : `${state.playback.volume}%`;
+  const statusLabel =
+    state.playback.status === 'playing'
+      ? '▶️ Playing'
+      : state.playback.status === 'paused'
+        ? '⏸️ Paused'
+        : state.playback.status === 'stopped'
+          ? '⏹️ Stopped'
+          : '💤 Idle';
+  const liveLabel = state.liveSession.active
+    ? `Connected (${state.liveSession.groupIdentifier})`
+    : 'Not Joined';
+
+  const queuePos = track ? `1 / ${1 + state.playback.queue.length}` : `0 / ${state.playback.queue.length}`;
+  const bar = track
+    ? renderProgressBar(state.playback.positionSec, track.durationSec)
+    : '━━━━━━━━━━━━━━━━━';
+
+  const text = track
+    ? [
+        '🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆',
+        '',
+        `🎵 Song: ${track.title}`,
+        `👤 Artist: ${track.artist}`,
+        `⏱️ Duration: ${formatDuration(state.playback.positionSec)} / ${formatDuration(track.durationSec)}`,
+        `🔊 Volume: ${volLabel}`,
+        `▶️ Status: ${statusLabel}`,
+        `🎤 Live: ${liveLabel}`,
+        `📚 Queue: ${queuePos} · Repeat: ${state.playback.repeatMode.toUpperCase()}`,
+        '',
+        bar,
+      ].join('\n')
+    : [
+        '🎧 𝐌𝐔𝐒𝐈𝐂 𝐏𝐋𝐀𝐘𝐄𝐑',
+        '',
+        'No track is currently active.',
+        `🎤 Live: ${liveLabel}`,
+        `🔊 Volume: ${volLabel}`,
+        'Send /play <song or link> or tap Play Music below.',
+      ].join('\n');
+
+  const inlineKeyboard: BotInlineButton[][] = [
+    [
+      { text: '⏮️ Prev', callbackData: 'player:prev' },
+      {
+        text: state.playback.status === 'playing' ? '⏸️ Pause' : '▶️ Resume',
+        callbackData: state.playback.status === 'playing' ? 'player:pause' : 'player:resume',
+      },
+      { text: '⏭️ Skip', callbackData: 'player:skip' },
+      { text: '⏹️ Stop', callbackData: 'player:stop' },
+    ],
+    [
+      { text: `🔁 Repeat: ${state.playback.repeatMode.toUpperCase()}`, callbackData: 'player:repeat' },
+      { text: `📚 Queue (${state.playback.queue.length})`, callbackData: 'cmd:queue' },
+    ],
+    [
+      { text: '🎚️ Volume Control', callbackData: 'cmd:volume' },
+      { text: '🎤 Live Control', callbackData: 'cmd:live_panel' },
+    ],
+    [{ text: '🔙 Main Menu', callbackData: 'cmd:start' }],
+  ];
+
+  return { text, inlineKeyboard };
+}
+
+export function buildVolumeMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const displayVol = state.playback.muted ? '🔇 MUTED' : `🔊 ${state.playback.volume}%`;
+  const text = [
+    '🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋',
+    '',
+    `<  ${displayVol}  >`,
+    '',
+    `Group Profile: ${state.liveSession.active ? state.liveSession.groupIdentifier : 'Global Default'}`,
+    'Allowed Range: 10% – 200% (FFmpeg Real-Time Gain)',
+  ].join('\n');
+
+  const inlineKeyboard: BotInlineButton[][] = [
+    [
+      { text: '➖ 10%', callbackData: 'vol:-10' },
+      { text: '➕ 10%', callbackData: 'vol:+10' },
+    ],
+    [
+      { text: '➖ 20%', callbackData: 'vol:-20' },
+      { text: '➕ 20%', callbackData: 'vol:+20' },
+    ],
+    [
+      { text: '🔇 MUTE', callbackData: 'vol:mute' },
+      { text: '🔊 UNMUTE', callbackData: 'vol:unmute' },
+    ],
+    [{ text: '🔙 BACK TO PLAYER', callbackData: 'cmd:player' }],
+  ];
+
+  return { text, inlineKeyboard };
+}
+
+export function buildLiveControlMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const acct = state.account;
+  const live = state.liveSession;
+  const text = live.active
+    ? [
+        '🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃',
+        '',
+        `✅ Personal Account: ${acct.displayName} (${acct.username})`,
+        '🎧 Voice Chat: Active',
+        `📍 Group: ${live.groupTitle} (${live.groupIdentifier})`,
+        `🎵 Music Player: ${state.playback.currentTrack ? 'Streaming' : 'Ready'}`,
+        `🔊 Audio: ${state.playback.muted ? 'Muted' : `${state.playback.volume}%`}`,
+        `⚡ Connection: ${live.connectionQuality}`,
+        `📡 Streams: ${live.activeStreamsCount} / ${live.maxConcurrentStreams}`,
+      ].join('\n')
+    : [
+        '🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐏𝐀𝐍𝐄𝐋',
+        '',
+        `👤 Personal Account: ${acct.status.toUpperCase()} (${acct.username})`,
+        '🎧 Voice Chat: Not Connected',
+        'Send /joinlive https://t.me/group_name/123 or tap Join Live.',
+      ].join('\n');
+
+  const inlineKeyboard: BotInlineButton[][] = [
+    [
+      { text: '🎤 Join Live', callbackData: 'live:join_demo' },
+      { text: '🚪 Leave Live', callbackData: 'live:leave' },
+    ],
+    [
+      { text: '▶️ Play Music', callbackData: 'cmd:play_demo' },
+      { text: '⏸️ Pause Music', callbackData: 'player:pause' },
+    ],
+    [
+      { text: '▶️ Resume Music', callbackData: 'player:resume' },
+      { text: '⏭️ Skip Music', callbackData: 'player:skip' },
+    ],
+    [
+      { text: '⏹️ Stop Music', callbackData: 'player:stop' },
+      { text: '📊 Live Status', callbackData: 'cmd:live_panel' },
+    ],
+    [
+      { text: '🔊 Volume +10%', callbackData: 'vol:+10' },
+      { text: '🔉 Volume -10%', callbackData: 'vol:-10' },
+    ],
+    [
+      { text: '🔇 Mute', callbackData: 'vol:mute' },
+      { text: '🔊 Unmute', callbackData: 'vol:unmute' },
+    ],
+    [
+      { text: '🔄 Reconnect', callbackData: 'account:reconnect' },
+      { text: '🔙 Main Menu', callbackData: 'cmd:start' },
+    ],
+  ];
+
+  return { text, inlineKeyboard };
+}
+
+export function buildAccountMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const a = state.account;
+  const text = [
+    '👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓 𝐂𝐎𝐍𝐓𝐑𝐎𝐋',
+    '',
+    `Name: ${a.displayName}`,
+    `Username: ${a.username}`,
+    `Phone: ${a.phoneMasked}`,
+    `MTProto Status: ${a.status.toUpperCase()} (${a.online ? 'Online' : 'Offline'})`,
+    `Active Voice Chat: ${state.liveSession.active ? state.liveSession.groupIdentifier : 'None'}`,
+    `Session Vault: ${a.sessionEncrypted ? 'AES-256-GCM Encrypted (Leak Guard Active)' : 'Not Configured'}`,
+    `Reconnect Attempts: ${a.retryCount} / ${a.maxRetries}`,
+  ].join('\n');
+
+  const inlineKeyboard: BotInlineButton[][] = [
+    [
+      { text: '🔗 Connect Account', callbackData: 'account:connect' },
+      { text: '🔌 Disconnect', callbackData: 'account:disconnect' },
+    ],
+    [
+      { text: '🔄 Reconnect', callbackData: 'account:reconnect' },
+      { text: '🎤 Live Control', callbackData: 'cmd:live_panel' },
+    ],
+    [{ text: '🔙 Main Menu', callbackData: 'cmd:start' }],
+  ];
+
+  return { text, inlineKeyboard };
+}
+
+export function buildOwnerMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const s = state.stats;
+  const text = [
+    '👑 𝐎𝐖𝐍𝐄𝐑 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃',
+    '',
+    `👥 Total Users: ${s.totalUsers}`,
+    `💬 Total Groups: ${s.totalGroups}`,
+    `🎵 Total Music Played: ${s.totalMusicPlayed}`,
+    `📡 Active Live Sessions: ${state.liveSession.active ? 1 : 0}`,
+    `👤 Connected Accounts: ${state.account.status === 'connected' ? 1 : 0}`,
+    `🖥️ Server CPU / RAM: ${s.cpuPercent}% / ${s.ramPercent}%`,
+    `⚡ Backend Worker: ${s.backendOnline ? `Online (${s.backendLatencyMs}ms)` : 'Offline'}`,
+    `🗄️ MySQL Database: ${s.databaseOnline ? 'Connected' : 'Offline'}`,
+    `🛡️ Maintenance Mode: ${state.maintenanceMode ? 'ENABLED' : 'OFF'}`,
+  ].join('\n');
+
+  const inlineKeyboard: BotInlineButton[][] = [
+    [
+      {
+        text: state.maintenanceMode ? '✅ Disable Maintenance' : '🛠️ Enable Maintenance',
+        callbackData: 'owner:toggle_maintenance',
+      },
+      { text: '🔄 Restart Backend', callbackData: 'owner:restart_backend' },
+    ],
+    [
+      { text: '👤 Account Control', callbackData: 'cmd:account' },
+      { text: '🔙 Main Menu', callbackData: 'cmd:start' },
+    ],
+  ];
+
+  return { text, inlineKeyboard };
+}
+
+export function buildHelpMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
+  const text = [
+    '📚 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐑𝐄𝐅𝐄𝐑𝐄𝐍𝐂𝐄',
+    '',
+    'General:',
+    '/start · /help · /play <song|url> · /pause · /resume',
+    '/skip · /stop · /queue · /nowplaying',
+    '/volume <10-200> · /mute · /unmute',
+    '',
+    'Live & Personal Account:',
+    '/joinlive <t.me link> · /leavelive · /live · /autojoin',
+    '/account · /connect · /disconnect · /reconnect',
+    '',
+    'System & Admin:',
+    '/ping · /stats · /reload · /status',
+    '/broadcast · /maintenance · /users · /groups · /restart',
+  ].join('\n');
+
+  return {
+    text,
+    inlineKeyboard: [[{ text: '🎧 Music Player', callbackData: 'cmd:player' }, { text: '🔙 Main Menu', callbackData: 'cmd:start' }]],
+  };
+}
+
+export function createInitialBotState(): BotSystemState {
+  const now = new Date().toISOString();
+  const welcome = buildWelcomeMessage();
+  return {
+    botUsername: '@UltimateLiveMusicBot',
+    maintenanceMode: false,
+    account: {
+      id: 'acct-personal-01',
+      displayName: 'Studio Streamer Account',
+      username: '@stream_controller',
+      phoneMasked: '+880 17•• •••842',
+      status: 'connected',
+      online: true,
+      sessionEncrypted: true,
+      retryCount: 0,
+      maxRetries: 3,
+      lastHeartbeatAt: now,
+    },
+    liveSession: {
+      active: false,
+      groupTitle: 'Dhaka Late Night Lounge',
+      groupIdentifier: '@dhaka_chill_vc',
+      voiceChatId: 'live',
+      autoJoinEnabled: true,
+      connectionQuality: 'Stable',
+      joinedAt: null,
+      activeStreamsCount: 0,
+      maxConcurrentStreams: 3,
+    },
+    playback: {
+      status: 'idle',
+      currentTrack: null,
+      positionSec: 0,
+      volume: 80,
+      muted: false,
+      previousVolume: 80,
+      repeatMode: 'off',
+      queue: [DEFAULT_LIBRARY_TRACKS[1], DEFAULT_LIBRARY_TRACKS[2]],
+      history: [],
+    },
+    stats: {
+      totalUsers: 1482,
+      totalGroups: 94,
+      totalMusicPlayed: 6819,
+      cpuPercent: 18,
+      ramPercent: 42,
+      backendLatencyMs: 28,
+      backendOnline: true,
+      databaseOnline: true,
+    },
+    users: [
+      { id: 'u-1', name: 'Owner Admin', username: '@owner_admin', role: 'owner', requestsCount: 342, banned: false },
+      { id: 'u-2', name: 'Rafi Ahmed', username: '@rafi_sound', role: 'admin', requestsCount: 129, banned: false },
+      { id: 'u-3', name: 'Nadia Karim', username: '@nadia_k', role: 'member', requestsCount: 47, banned: false },
+    ],
+    groups: [
+      { id: 'g-1', title: 'Dhaka Late Night Lounge', identifier: '@dhaka_chill_vc', volume: 80, autoJoin: true, active: true },
+      { id: 'g-2', title: 'BD Acoustic Club', identifier: '@bd_acoustic', volume: 100, autoJoin: true, active: true },
+      { id: 'g-3', title: 'Midnight Lo-Fi Room', identifier: '@midnight_lofi', volume: 65, autoJoin: false, active: true },
+    ],
+    errorLogs: [
+      {
+        id: 'err-1',
+        timestamp: now,
+        component: 'pytgcalls',
+        message: 'Recovered Opus jitter buffer cleanly after 180ms packet delay.',
+      },
+    ],
+    messages: [
+      {
+        id: 'msg-init-1',
+        sender: 'bot',
+        text: welcome.text,
+        inlineKeyboard: welcome.inlineKeyboard,
+        timestamp: now,
+        kind: 'welcome',
+      },
+    ],
+  };
+}
+
+function makeMessage(
+  sender: 'user' | 'bot',
+  text: string,
+  extra: Partial<BotMessage> = {},
+): BotMessage {
+  return {
+    id: `msg-${Date.now()}-${Math.random().toString(36).slice(2, 7)}`,
+    sender,
+    text,
+    timestamp: new Date().toISOString(),
+    ...extra,
+  };
+}
+
+function cloneState(state: BotSystemState): BotSystemState {
+  return JSON.parse(JSON.stringify(state)) as BotSystemState;
+}
+
+/**
+ * Pure state-machine dispatcher for Telegram commands and inline callback actions.
+ * Drives both the live Express webhook simulator and the interactive Studio UI.
+ */
+export function processBotInput(
+  prevState: BotSystemState,
+  rawInput: string,
+  options: { isCallback?: boolean; senderUsername?: string } = {},
+): BotSystemState {
+  const state = cloneState(prevState);
+  const input = rawInput.trim();
+  if (!input) return state;
+
+  const isCallback = Boolean(options.isCallback);
+  const sender = options.senderUsername || '@owner_admin';
+
+  if (!isCallback) {
+    state.messages.push(makeMessage('user', input));
+  }
+
+  // Maintenance gate (allows /maintenance and /start for owner)
+  if (
+    state.maintenanceMode &&
+    !input.startsWith('/maintenance') &&
+    !input.startsWith('owner:') &&
+    input !== '/start' &&
+    input !== 'cmd:start'
+  ) {
+    state.messages.push(
+      makeMessage('bot', '🛠️ Maintenance Mode is currently active. Only owner controls are permitted.', {
+        kind: 'error',
+      }),
+    );
+    return state;
+  }
+
+  // Handle inline callback routes
+  if (isCallback) {
+    if (input === 'cmd:start') {
+      const w = buildWelcomeMessage();
+      state.messages.push(
+        makeMessage('bot', w.text, {
+          inlineKeyboard: w.inlineKeyboard,
+          kind: 'welcome',
+          isAnimated: true,
+          animationFrames: [
+            '🎧 Initializing Premium Music Bot...\n◉ ○ ○ ○',
+            '🎶 Loading Personal Account Bridge...\n◉ ◉ ○ ○',
+            '✨ Preparing Inline Controls...\n◉ ◉ ◉ ○',
+            w.text,
+          ],
+        }),
+      );
+      return state;
+    }
+
+    if (input === 'cmd:player' || input === 'cmd:nowplaying') {
+      const p = buildPlayerMessage(state);
+      state.messages.push(makeMessage('bot', p.text, { inlineKeyboard: p.inlineKeyboard, kind: 'player' }));
+      return state;
+    }
+
+    if (input === 'cmd:volume') {
+      const v = buildVolumeMessage(state);
+      state.messages.push(makeMessage('bot', v.text, { inlineKeyboard: v.inlineKeyboard, kind: 'volume' }));
+      return state;
+    }
+
+    if (input === 'cmd:live_panel') {
+      const l = buildLiveControlMessage(state);
+      state.messages.push(makeMessage('bot', l.text, { inlineKeyboard: l.inlineKeyboard, kind: 'live' }));
+      return state;
+    }
+
+    if (input === 'cmd:account') {
+      const a = buildAccountMessage(state);
+      state.messages.push(makeMessage('bot', a.text, { inlineKeyboard: a.inlineKeyboard, kind: 'account' }));
+      return state;
+    }
+
+    if (input === 'cmd:owner') {
+      const o = buildOwnerMessage(state);
+      state.messages.push(makeMessage('bot', o.text, { inlineKeyboard: o.inlineKeyboard, kind: 'owner' }));
+      return state;
+    }
+
+    if (input === 'cmd:help') {
+      const h = buildHelpMessage();
+      state.messages.push(makeMessage('bot', h.text, { inlineKeyboard: h.inlineKeyboard, kind: 'help' }));
+      return state;
+    }
+
+    if (input === 'cmd:play_prompt') {
+      state.messages.push(
+        makeMessage(
+          'bot',
+          '🎵 Send /play <song name or audio URL> or tap Quick Demo Play below.',
+          {
+            kind: 'info',
+            inlineKeyboard: [
+              [{ text: '▶️ Play Midnight Signal', callbackData: 'cmd:play_demo' }],
+              [{ text: '🔙 Main Menu', callbackData: 'cmd:start' }],
+            ],
+          },
+        ),
+      );
+      return state;
+    }
+
+    if (input === 'cmd:play_demo') {
+      return processBotInput(state, '/play Midnight Signal (Studio Mix)', {
+        isCallback: false,
+        senderUsername: sender,
+      });
+    }
+
+    if (input === 'cmd:queue') {
+      const lines = ['📚 𝐌𝐔𝐒𝐈𝐂 𝐐𝐔𝐄𝐔𝐄', ''];
+      if (state.playback.currentTrack) {
+        lines.push(`▶️ Now: ${state.playback.currentTrack.title} (${formatDuration(state.playback.currentTrack.durationSec)})`);
+      }
+      if (state.playback.queue.length === 0) {
+        lines.push('Queue is empty. Use /play <song> to add tracks.');
+      } else {
+        state.playback.queue.forEach((t, idx) => {
+          lines.push(`${idx + 1}. ${t.title} — ${t.artist} [${formatDuration(t.durationSec)}]`);
+        });
+      }
+      state.messages.push(
+        makeMessage('bot', lines.join('\n'), {
+          kind: 'queue',
+          inlineKeyboard: [
+            [
+              { text: '⏭️ Skip Track', callbackData: 'player:skip' },
+              { text: '🎧 Player', callbackData: 'cmd:player' },
+            ],
+          ],
+        }),
+      );
+      return state;
+    }
+
+    if (input === 'live:join_demo') {
+      return processBotInput(state, '/joinlive https://t.me/dhaka_chill_vc/42', {
+        isCallback: false,
+        senderUsername: sender,
+      });
+    }
+
+    if (input === 'live:leave') {
+      return processBotInput(state, '/leavelive', { isCallback: false, senderUsername: sender });
+    }
+
+    if (input.startsWith('vol:')) {
+      const action = input.slice(4);
+      if (action === 'mute') {
+        if (!state.playback.muted) {
+          state.playback.previousVolume = state.playback.volume;
+          state.playback.muted = true;
+        }
+      } else if (action === 'unmute') {
+        state.playback.muted = false;
+        state.playback.volume = clampVolume(state.playback.previousVolume || state.playback.volume);
+      } else {
+        const delta = Number(action);
+        if (Number.isFinite(delta)) {
+          state.playback.muted = false;
+          state.playback.volume = clampVolume(state.playback.volume + delta);
+          state.playback.previousVolume = state.playback.volume;
+        }
+      }
+      const v = buildVolumeMessage(state);
+      state.messages.push(makeMessage('bot', v.text, { inlineKeyboard: v.inlineKeyboard, kind: 'volume' }));
+      return state;
+    }
+
+    if (input.startsWith('player:')) {
+      const action = input.slice(7);
+      if (action === 'pause') {
+        if (state.playback.currentTrack && state.playback.status === 'playing') {
+          state.playback.status = 'paused';
+        }
+      } else if (action === 'resume') {
+        if (state.playback.currentTrack) {
+          state.playback.status = 'playing';
+        } else if (state.playback.queue.length > 0) {
+          const next = state.playback.queue.shift()!;
+          state.playback.currentTrack = next;
+          state.playback.positionSec = 0;
+          state.playback.status = 'playing';
+          state.stats.totalMusicPlayed += 1;
+        }
+      } else if (action === 'stop') {
+        if (state.playback.currentTrack) {
+          state.playback.history.unshift(state.playback.currentTrack);
+        }
+        state.playback.currentTrack = null;
+        state.playback.positionSec = 0;
+        state.playback.status = 'stopped';
+      } else if (action === 'skip') {
+        return skipCurrentTrack(state);
+      } else if (action === 'prev') {
+        if (state.playback.history.length > 0) {
+          const prev = state.playback.history.shift()!;
+          if (state.playback.currentTrack) {
+            state.playback.queue.unshift(state.playback.currentTrack);
+          }
+          state.playback.currentTrack = prev;
+          state.playback.positionSec = 0;
+          state.playback.status = 'playing';
+        }
+      } else if (action === 'repeat') {
+        const modes: RepeatMode[] = ['off', 'one', 'all'];
+        const idx = modes.indexOf(state.playback.repeatMode);
+        state.playback.repeatMode = modes[(idx + 1) % modes.length];
+      }
+      const p = buildPlayerMessage(state);
+      state.messages.push(makeMessage('bot', p.text, { inlineKeyboard: p.inlineKeyboard, kind: 'player' }));
+      return state;
+    }
+
+    if (input.startsWith('account:')) {
+      const action = input.slice(8);
+      if (action === 'connect') {
+        state.account.status = 'connected';
+        state.account.online = true;
+        state.account.retryCount = 0;
+        state.account.lastHeartbeatAt = new Date().toISOString();
+      } else if (action === 'disconnect') {
+        state.account.status = 'disconnected';
+        state.account.online = false;
+        state.liveSession.active = false;
+        state.liveSession.activeStreamsCount = 0;
+        state.liveSession.connectionQuality = 'Offline';
+        if (state.playback.status === 'playing') {
+          state.playback.status = 'paused';
+        }
+      } else if (action === 'reconnect') {
+        state.account.status = 'connected';
+        state.account.online = true;
+        state.account.retryCount = Math.min(state.account.maxRetries, state.account.retryCount + 1);
+        state.account.lastHeartbeatAt = new Date().toISOString();
+        if (state.liveSession.active) {
+          state.liveSession.connectionQuality = 'Stable';
+        }
+      }
+      const a = buildAccountMessage(state);
+      state.messages.push(
+        makeMessage('bot', a.text, {
+          inlineKeyboard: a.inlineKeyboard,
+          kind: 'account',
+          isAnimated: action === 'reconnect' || action === 'connect',
+          animationFrames:
+            action === 'reconnect' || action === 'connect'
+              ? [
+                  '🔐 Verifying Encrypted MTProto Session...\n◉ ○ ○ ○',
+                  '📡 Handshaking with Telegram DC...\n◉ ◉ ○ ○',
+                  '✅ Personal Account Online!\n◉ ◉ ◉ ◉',
+                  a.text,
+                ]
+              : undefined,
+        }),
+      );
+      return state;
+    }
+
+    if (input === 'owner:toggle_maintenance') {
+      state.maintenanceMode = !state.maintenanceMode;
+      const o = buildOwnerMessage(state);
+      state.messages.push(makeMessage('bot', o.text, { inlineKeyboard: o.inlineKeyboard, kind: 'owner' }));
+      return state;
+    }
+
+    if (input === 'owner:restart_backend') {
+      state.stats.backendOnline = true;
+      state.stats.backendLatencyMs = 24;
+      state.account.retryCount = 0;
+      const o = buildOwnerMessage(state);
+      state.messages.push(
+        makeMessage('bot', o.text, {
+          inlineKeyboard: o.inlineKeyboard,
+          kind: 'owner',
+          isAnimated: true,
+          animationFrames: [
+            '🔄 Restarting Python Audio Streaming Worker...\n◉ ○ ○ ○',
+            '🎚️ Re-initializing FFmpeg & PyTgCalls...\n◉ ◉ ◉ ○',
+            o.text,
+          ],
+        }),
+      );
+      return state;
+    }
+  }
+
+  // Handle slash commands
+  const [rawCmd, ...argParts] = input.split(/\s+/);
+  const cmd = rawCmd.toLowerCase().split('@')[0];
+  const arg = argParts.join(' ').trim();
+
+  switch (cmd) {
+    case '/start': {
+      const w = buildWelcomeMessage();
+      state.messages.push(
+        makeMessage('bot', w.text, {
+          inlineKeyboard: w.inlineKeyboard,
+          kind: 'welcome',
+          isAnimated: true,
+          animationFrames: [
+            '🎧 Starting Premium Music Engine...\n◉ ○ ○ ○',
+            '🎶 Syncing Live Audio Controls...\n◉ ◉ ○ ○',
+            '✨ Ready!\n◉ ◉ ◉ ◉',
+            w.text,
+          ],
+        }),
+      );
+      return state;
+    }
+
+    case '/help': {
+      const h = buildHelpMessage();
+      state.messages.push(makeMessage('bot', h.text, { inlineKeyboard: h.inlineKeyboard, kind: 'help' }));
+      return state;
+    }
+
+    case '/joinlive': {
+      if (!arg) {
+        state.messages.push(
+          makeMessage('bot', '❌ Invalid Live Link\nUsage: /joinlive https://t.me/group_name/123', {
+            kind: 'error',
+          }),
+        );
+        return state;
+      }
+      if (!state.stats.backendOnline) {
+        state.messages.push(makeMessage('bot', '❌ Streaming Backend Offline', { kind: 'error' }));
+        return state;
+      }
+      if (state.account.status !== 'connected') {
+        state.messages.push(
+          makeMessage('bot', '❌ Account Has No Access\nPersonal account is disconnected. Run /connect first.', {
+            kind: 'error',
+          }),
+        );
+        return state;
+      }
+
+      const parsed = parseTelegramLiveLink(arg);
+      if (!parsed.valid || !parsed.chatIdentifier) {
+        state.messages.push(
+          makeMessage('bot', `❌ Invalid Live Link\n${parsed.reason ?? 'Unrecognized Telegram link.'}`, {
+            kind: 'error',
+          }),
+        );
+        return state;
+      }
+
+      state.liveSession.active = true;
+      state.liveSession.groupIdentifier = parsed.chatIdentifier;
+      state.liveSession.groupTitle = parsed.chatIdentifier.replace('@', '').replace(/_/g, ' ');
+      state.liveSession.voiceChatId = parsed.voiceChatId || 'live';
+      state.liveSession.connectionQuality = 'Stable';
+      state.liveSession.joinedAt = new Date().toISOString();
+      state.liveSession.activeStreamsCount = 1;
+
+      const liveMsg = buildLiveControlMessage(state);
+      state.messages.push(
+        makeMessage('bot', liveMsg.text, {
+          inlineKeyboard: liveMsg.inlineKeyboard,
+          kind: 'live',
+          isAnimated: true,
+          animationFrames: [
+            '🎧 Connecting to Voice Chat...\n◉ ○ ○ ○',
+            `🎤 Joining Live (${parsed.chatIdentifier})...\n◉ ◉ ○ ○`,
+            '🎵 Preparing Music & FFmpeg Pipe...\n◉ ◉ ◉ ○',
+            liveMsg.text,
+          ],
+        }),
+      );
+      return state;
+    }
+
+    case '/leavelive': {
+      state.liveSession.active = false;
+      state.liveSession.activeStreamsCount = 0;
+      state.liveSession.connectionQuality = 'Offline';
+      if (state.playback.status === 'playing') {
+        state.playback.status = 'paused';
+      }
+      state.messages.push(
+        makeMessage('bot', '🚪 Left the active Voice Chat cleanly. Session resources released.', {
+          kind: 'live',
+          inlineKeyboard: [[{ text: '🎤 Rejoin Live', callbackData: 'live:join_demo' }, { text: '🔙 Main Menu', callbackData: 'cmd:start' }]],
+        }),
+      );
+      return state;
+    }
+
+    case '/live': {
+      const l = buildLiveControlMessage(state);
+      state.messages.push(makeMessage('bot', l.text, { inlineKeyboard: l.inlineKeyboard, kind: 'live' }));
+      return state;
+    }
+
+    case '/autojoin': {
+      state.liveSession.autoJoinEnabled = !state.liveSession.autoJoinEnabled;
+      state.messages.push(
+        makeMessage(
+          'bot',
+          `🎤 Auto Live Join is now ${state.liveSession.autoJoinEnabled ? 'ENABLED' : 'DISABLED'}.`,
+          { kind: 'live' },
+        ),
+      );
+      return state;
+    }
+
+    case '/play': {
+      if (!arg) {
+        state.messages.push(
+          makeMessage('bot', '🎵 Please specify a song name or direct audio link: /play <query or url>', {
+            kind: 'error',
+          }),
+        );
+        return state;
+      }
+
+      if (arg.startsWith('http://') || arg.startsWith('https://')) {
+        const safe = validateSafeExternalUrl(arg);
+        if (!safe.valid) {
+          state.messages.push(makeMessage('bot', `❌ Blocked Media URL: ${safe.reason}`, { kind: 'error' }));
+          return state;
+        }
+      }
+
+      if (!state.liveSession.active && state.liveSession.autoJoinEnabled && state.account.status === 'connected') {
+        state.liveSession.active = true;
+        state.liveSession.activeStreamsCount = 1;
+        state.liveSession.connectionQuality = 'Stable';
+        state.liveSession.joinedAt = new Date().toISOString();
+      }
+
+      const matched = DEFAULT_LIBRARY_TRACKS.find((t) =>
+        t.title.toLowerCase().includes(arg.toLowerCase()),
+      );
+
+      const newTrack: TrackItem = matched
+        ? { ...matched, id: `trk-${Date.now()}`, requestedBy: sender }
+        : {
+            id: `trk-${Date.now()}`,
+            title: arg.startsWith('http') ? arg.split('/').pop() || 'Live Audio Stream' : arg,
+            artist: arg.startsWith('http') ? 'External Stream Source' : 'Requested Track',
+            durationSec: 232,
+            sourceType: arg.startsWith('http') ? 'stream_link' : 'library',
+            sourceUrl: arg.startsWith('http') ? arg : DEFAULT_LIBRARY_TRACKS[0].sourceUrl,
+            requestedBy: sender,
+            artworkUrl: CATALOG_ARTWORKS[state.stats.totalMusicPlayed % CATALOG_ARTWORKS.length],
+          };
+
+      if (!state.playback.currentTrack || state.playback.status === 'idle' || state.playback.status === 'stopped') {
+        state.playback.currentTrack = newTrack;
+        state.playback.positionSec = 0;
+        state.playback.status = 'playing';
+        state.stats.totalMusicPlayed += 1;
+      } else {
+        state.playback.queue.push(newTrack);
+      }
+
+      const player = buildPlayerMessage(state);
+      state.messages.push(
+        makeMessage('bot', player.text, {
+          inlineKeyboard: player.inlineKeyboard,
+          kind: 'player',
+          isAnimated: true,
+          animationFrames: [
+            '🎵 Validating Music Source...\n◉ ○ ○ ○',
+            '🎚️ Processing FFmpeg Opus Stream...\n◉ ◉ ◉ ○',
+            '🔥 MUSIC STREAMING STARTED!\n◉ ◉ ◉ ◉',
+            player.text,
+          ],
+        }),
+      );
+      return state;
+    }
+
+    case '/pause':
+      return processBotInput(state, 'player:pause', { isCallback: true, senderUsername: sender });
+
+    case '/resume':
+      return processBotInput(state, 'player:resume', { isCallback: true, senderUsername: sender });
+
+    case '/skip':
+      return processBotInput(state, 'player:skip', { isCallback: true, senderUsername: sender });
+
+    case '/stop':
+      return processBotInput(state, 'player:stop', { isCallback: true, senderUsername: sender });
+
+    case '/queue':
+      return processBotInput(state, 'cmd:queue', { isCallback: true, senderUsername: sender });
+
+    case '/nowplaying':
+      return processBotInput(state, 'cmd:nowplaying', { isCallback: true, senderUsername: sender });
+
+    case '/volume': {
+      if (!arg) {
+        return processBotInput(state, 'cmd:volume', { isCallback: true, senderUsername: sender });
+      }
+      const parsedVol = Number(arg.replace('%', ''));
+      if (!Number.isFinite(parsedVol)) {
+        state.messages.push(makeMessage('bot', '❌ Volume must be between 10 and 200.', { kind: 'error' }));
+        return state;
+      }
+      state.playback.muted = false;
+      state.playback.volume = clampVolume(parsedVol);
+      state.playback.previousVolume = state.playback.volume;
+      const v = buildVolumeMessage(state);
+      state.messages.push(makeMessage('bot', v.text, { inlineKeyboard: v.inlineKeyboard, kind: 'volume' }));
+      return state;
+    }
+
+    case '/mute':
+      return processBotInput(state, 'vol:mute', { isCallback: true, senderUsername: sender });
+
+    case '/unmute':
+      return processBotInput(state, 'vol:unmute', { isCallback: true, senderUsername: sender });
+
+    case '/account':
+      return processBotInput(state, 'cmd:account', { isCallback: true, senderUsername: sender });
+
+    case '/connect':
+      return processBotInput(state, 'account:connect', { isCallback: true, senderUsername: sender });
+
+    case '/disconnect':
+      return processBotInput(state, 'account:disconnect', { isCallback: true, senderUsername: sender });
+
+    case '/reconnect':
+      return processBotInput(state, 'account:reconnect', { isCallback: true, senderUsername: sender });
+
+    case '/ping': {
+      state.messages.push(
+        makeMessage(
+          'bot',
+          `⚡ Pong! Webhook: 14ms · Audio Worker: ${state.stats.backendLatencyMs}ms · DB: 6ms`,
+          { kind: 'info' },
+        ),
+      );
+      return state;
+    }
+
+    case '/stats':
+    case '/status':
+    case '/owner':
+      return processBotInput(state, 'cmd:owner', { isCallback: true, senderUsername: sender });
+
+    case '/maintenance': {
+      return processBotInput(state, 'owner:toggle_maintenance', { isCallback: true, senderUsername: sender });
+    }
+
+    case '/reload':
+    case '/restart': {
+      return processBotInput(state, 'owner:restart_backend', { isCallback: true, senderUsername: sender });
+    }
+
+    case '/broadcast': {
+      if (!arg) {
+        state.messages.push(makeMessage('bot', '📢 Usage: /broadcast <announcement message>', { kind: 'error' }));
+        return state;
+      }
+      state.messages.push(
+        makeMessage(
+          'bot',
+          `📢 Broadcast dispatched cleanly to ${state.stats.totalUsers} users and ${state.stats.totalGroups} groups:\n"${arg}"`,
+          { kind: 'owner' },
+        ),
+      );
+      return state;
+    }
+
+    case '/users': {
+      const list = state.users
+        .map((u) => `• ${u.name} (${u.username}) · ${u.role.toUpperCase()} · ${u.requestsCount} plays`)
+        .join('\n');
+      state.messages.push(makeMessage('bot', `👥 𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐔𝐒𝐄𝐑𝐒\n\n${list}`, { kind: 'owner' }));
+      return state;
+    }
+
+    case '/groups': {
+      const list = state.groups
+        .map((g) => `• ${g.title} (${g.identifier}) · Vol ${g.volume}% · AutoJoin ${g.autoJoin ? 'ON' : 'OFF'}`)
+        .join('\n');
+      state.messages.push(makeMessage('bot', `💬 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒\n\n${list}`, { kind: 'owner' }));
+      return state;
+    }
+
+    default: {
+      // If user pasted a Telegram live link directly without /joinlive
+      if (input.includes('t.me/') || input.includes('telegram.me/')) {
+        return processBotInput(state, `/joinlive ${input}`, { isCallback: false, senderUsername: sender });
+      }
+      state.messages.push(
+        makeMessage('bot', `Unrecognized command "${cmd}". Send /help to view all supported commands.`, {
+          kind: 'error',
+        }),
+      );
+      return state;
+    }
+  }
+}
+
+export function skipCurrentTrack(state: BotSystemState): BotSystemState {
+  if (state.playback.currentTrack) {
+    if (state.playback.repeatMode === 'one') {
+      state.playback.positionSec = 0;
+      state.playback.status = 'playing';
+      return state;
+    }
+    if (state.playback.repeatMode === 'all') {
+      state.playback.queue.push(state.playback.currentTrack);
+    } else {
+      state.playback.history.unshift(state.playback.currentTrack);
+    }
+  }
+
+  if (state.playback.queue.length > 0) {
+    state.playback.currentTrack = state.playback.queue.shift()!;
+    state.playback.positionSec = 0;
+    state.playback.status = 'playing';
+    state.stats.totalMusicPlayed += 1;
+  } else {
+    state.playback.currentTrack = null;
+    state.playback.positionSec = 0;
+    state.playback.status = 'idle';
+  }
+  return state;
+}
+
+export function tickPlayback(prevState: BotSystemState, deltaSec = 1): BotSystemState {
+  if (prevState.playback.status !== 'playing' || !prevState.playback.currentTrack) {
+    return prevState;
+  }
+  const state = cloneState(prevState);
+  state.playback.positionSec += deltaSec;
+  if (state.playback.positionSec >= state.playback.currentTrack!.durationSec) {
+    return skipCurrentTrack(state);
+  }
+  return state;
+}

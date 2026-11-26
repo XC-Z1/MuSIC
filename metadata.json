@@ -1,0 +1,6 @@
+{
+  "name": "TeleStream Studio — Telegram Music Bot & MTProto Control Console",
+  "description": "Production Telegram Music Bot controller with Personal Account MTProto voice-chat streaming, animated inline UI, Vercel webhook, PHP cPanel controller, Python PyTgCalls backend, and MySQL schema.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
