@@ -6,12 +6,13 @@ from pytgcalls import PyTgCalls
 
 
 class VoiceChatManager:
-    """Resolves Telegram group/voice-chat links and manages active voice-chat membership."""
+    """Resolves Telegram group/voice-chat links and maps controller chats to active Voice Chats."""
 
     def __init__(self, account_client: Client, calls: PyTgCalls) -> None:
         self.client = account_client
         self.calls = calls
         self.active_chats: dict[int, dict] = {}
+        self.chat_target_map: dict[int, int] = {}
         self.max_concurrent_streams = 3
 
     @staticmethod
@@ -34,7 +35,19 @@ class VoiceChatManager:
             raise ValueError("Invalid Live Link")
         return f"@{username}"
 
-    async def resolve_and_join(self, link: str) -> dict:
+    def resolve_target_chat(self, controller_chat_id: int) -> int:
+        """Maps a user's DM or bot chat ID to the active Group/Channel Voice Chat ID."""
+        if controller_chat_id in self.chat_target_map:
+            return self.chat_target_map[controller_chat_id]
+        if controller_chat_id in self.active_chats:
+            return controller_chat_id
+        if len(self.active_chats) == 1:
+            return next(iter(self.active_chats.keys()))
+        if self.active_chats:
+            return next(reversed(list(self.active_chats.keys())))
+        return controller_chat_id
+
+    async def resolve_and_join(self, link: str, controller_chat_id: int | None = None) -> dict:
         if len(self.active_chats) >= self.max_concurrent_streams:
             raise RuntimeError(f"Concurrent stream limit reached ({self.max_concurrent_streams}).")
 
@@ -53,16 +66,23 @@ class VoiceChatManager:
         except Exception as exc:
             raise RuntimeError(f"Voice Chat Not Available: {exc}") from exc
 
-        self.active_chats[chat.id] = {
+        session_info = {
             "chat_id": chat.id,
             "group_title": chat.title or str(target),
             "link": link,
             "active": True,
         }
-        return self.active_chats[chat.id]
+        self.active_chats[chat.id] = session_info
+        if controller_chat_id is not None:
+            self.chat_target_map[controller_chat_id] = chat.id
+        return session_info
 
     async def leave(self, chat_id: int) -> None:
+        target_id = self.resolve_target_chat(chat_id)
         try:
-            await self.calls.leave_call(chat_id)
+            await self.calls.leave_call(target_id)
         finally:
-            self.active_chats.pop(chat_id, None)
+            self.active_chats.pop(target_id, None)
+            stale_keys = [k for k, v in self.chat_target_map.items() if v == target_id]
+            for k in stale_keys:
+                self.chat_target_map.pop(k, None)

@@ -84,6 +84,11 @@ class PlayPayload(BaseModel):
     requested_by: str = "User"
 
 
+class SearchPayload(BaseModel):
+    query: str
+    limit: int = 5
+
+
 class VolumePayload(BaseModel):
     chat_id: int
     volume: int | None = None
@@ -93,6 +98,10 @@ class VolumePayload(BaseModel):
 
 class ChatPayload(BaseModel):
     chat_id: int
+
+
+def _target_chat(chat_id: int) -> int:
+    return voice_mgr.resolve_target_chat(chat_id) if voice_mgr else chat_id
 
 
 @app.get("/health", dependencies=[Depends(verify_hmac_auth)])
@@ -138,7 +147,7 @@ async def account_reconnect():
 async def live_join(payload: JoinLivePayload):
     if not voice_mgr or not account.connected:
         raise HTTPException(status_code=503, detail="Personal account is not connected.")
-    return await voice_mgr.resolve_and_join(payload.link)
+    return await voice_mgr.resolve_and_join(payload.link, controller_chat_id=payload.chat_id)
 
 
 @app.post("/live/leave", dependencies=[Depends(verify_hmac_auth)])
@@ -155,25 +164,36 @@ async def live_status():
     return {"active": bool(active), "sessions": active, "group_title": active[0]["group_title"] if active else None}
 
 
+@app.post("/player/search", dependencies=[Depends(verify_hmac_auth)])
+async def player_search(payload: SearchPayload):
+    try:
+        results = await asyncio.to_thread(processor.search_tracks, payload.query, payload.limit)
+        return {"results": results}
+    except Exception as exc:
+        raise HTTPException(status_code=400, detail=f"Search failed: {exc}") from exc
+
+
 @app.post("/player/play", dependencies=[Depends(verify_hmac_auth)])
 async def player_play(payload: PlayPayload):
     if not player:
         raise HTTPException(status_code=503, detail="Streaming Backend Offline")
-    return await player.play(payload.chat_id, payload.source, payload.requested_by)
+    target = _target_chat(payload.chat_id)
+    return await player.play(target, payload.source, payload.requested_by)
 
 
 @app.post("/player/{action}", dependencies=[Depends(verify_hmac_auth)])
 async def player_action(action: str, payload: ChatPayload):
     if not player:
         raise HTTPException(status_code=503, detail="Streaming Backend Offline")
+    target = _target_chat(payload.chat_id)
     if action == "pause":
-        return await player.pause(payload.chat_id)
+        return await player.pause(target)
     if action == "resume":
-        return await player.resume(payload.chat_id)
+        return await player.resume(target)
     if action == "skip":
-        return await player.skip(payload.chat_id)
+        return await player.skip(target)
     if action == "stop":
-        return await player.stop(payload.chat_id)
+        return await player.stop(target)
     raise HTTPException(status_code=400, detail="Unsupported action")
 
 
@@ -181,21 +201,22 @@ async def player_action(action: str, payload: ChatPayload):
 async def player_status(chat_id: int = 0):
     if not player:
         return {"status": "idle", "volume": 80, "muted": False}
-    return player.status(chat_id)
+    return player.status(_target_chat(chat_id))
 
 
 @app.post("/volume/set", dependencies=[Depends(verify_hmac_auth)])
 @app.post("/volume/adjust", dependencies=[Depends(verify_hmac_auth)])
 async def volume_update(payload: VolumePayload):
+    target = _target_chat(payload.chat_id)
     if payload.action:
-        st = volumes.adjust(payload.chat_id, payload.action)
+        st = volumes.adjust(target, payload.action)
     else:
-        st = volumes.set_volume(payload.chat_id, payload.volume or 80, payload.muted)
+        st = volumes.set_volume(target, payload.volume or 80, payload.muted)
     if player:
-        await player.apply_volume(payload.chat_id)
+        await player.apply_volume(target)
     return st
 
 
 @app.get("/volume/status", dependencies=[Depends(verify_hmac_auth)])
 async def volume_status(chat_id: int = 0):
-    return volumes.get_state(chat_id)
+    return volumes.get_state(_target_chat(chat_id))

@@ -2,7 +2,7 @@ import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { ANIMATION_PRESETS, playAnimatedSequence } from '../lib/animations';
 import { callAudioBackend } from '../lib/backendClient';
-import { KEYBOARDS, answerCallbackQuery, editMessageText, sendMessage } from '../lib/telegram';
+import { KEYBOARDS, answerCallbackQuery, editMessageText, sendMessage, type InlineKeyboardMarkup } from '../lib/telegram';
 
 interface TelegramUpdate {
   message?: {
@@ -11,6 +11,8 @@ interface TelegramUpdate {
     from?: { id: number; username?: string; first_name?: string };
     text?: string;
     audio?: { file_id: string; title?: string; performer?: string; duration?: number };
+    voice?: { file_id: string; duration?: number };
+    document?: { file_id: string; file_name?: string; mime_type?: string };
   };
   callback_query?: {
     id: string;
@@ -22,7 +24,8 @@ interface TelegramUpdate {
 
 function verifySecret(header: string | string[] | undefined): boolean {
   const expected = process.env.TELEGRAM_WEBHOOK_SECRET || '';
-  if (!expected || typeof header !== 'string') return false;
+  if (!expected) return true;
+  if (typeof header !== 'string') return false;
   const a = Buffer.from(header, 'utf8');
   const b = Buffer.from(expected, 'utf8');
   return a.length === b.length && crypto.timingSafeEqual(a, b);
@@ -30,13 +33,49 @@ function verifySecret(header: string | string[] | undefined): boolean {
 
 function isOwner(userId?: number): boolean {
   const ownerId = process.env.TELEGRAM_OWNER_ID || '';
-  return Boolean(ownerId && userId && String(userId) === ownerId);
+  if (!ownerId) return true;
+  return Boolean(userId && String(userId) === ownerId);
 }
 
 function buildProgressBar(pos: number, dur: number, width = 17): string {
   const ratio = Math.min(1, Math.max(0, pos / Math.max(1, dur)));
   const idx = Math.min(width - 1, Math.round(ratio * (width - 1)));
   return Array.from({ length: width }, (_, i) => (i === idx ? '●' : '━')).join('');
+}
+
+function isMediaUrl(text: string): boolean {
+  const lower = text.toLowerCase();
+  if (!lower.startsWith('http://') && !lower.startsWith('https://')) return false;
+  if (lower.includes('t.me/') || lower.includes('telegram.me/')) return false;
+  return (
+    lower.includes('youtube.com/') ||
+    lower.includes('youtu.be/') ||
+    lower.includes('soundcloud.com/') ||
+    /\.(mp3|m4a|ogg|wav|flac|aac)(\?|$)/i.test(lower)
+  );
+}
+
+function getWorkerDiagnosticText(actionLabel?: string): string {
+  const hasApiCreds = Boolean(process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH);
+  const hasWorker = Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET);
+  return [
+    actionLabel ? `⚡ Action: ${actionLabel}` : '',
+    '🤖 Bot Webhook: ✅ Online (Vercel)',
+    `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (must also be in VPS .env)' : '⚪ Not set'}`,
+    `🖥️ VPS Audio Worker: ${hasWorker ? '✅ Linked' : '❌ Not Linked Yet'}`,
+    '',
+    hasWorker
+      ? 'VPS Audio Worker is linked. Tap Connect/Reconnect or check VPS logs if offline.'
+      : [
+          'ℹ️ Vercel serverless cannot hold a persistent MTProto Voice Chat stream directly.',
+          'To connect your Personal Account & stream music:',
+          '1️⃣ Run backend/main.py on a Python VPS (Pyrogram + PyTgCalls + FFmpeg)',
+          '2️⃣ Generate session on VPS: python3 account_client.py --login',
+          '3️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel Env Vars & Redeploy.',
+        ].join('\n'),
+  ]
+    .filter(Boolean)
+    .join('\n');
 }
 
 const WELCOME_TEXT = [
@@ -53,7 +92,13 @@ const WELCOME_TEXT = [
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
-    return res.status(200).json({ ok: true, service: 'premium-music-bot-vercel-webhook' });
+    const botConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN);
+    return res.status(200).json({
+      ok: true,
+      service: 'premium-music-bot-vercel-webhook',
+      botConfigured,
+      audioWorkerConfigured: Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET),
+    });
   }
 
   if (req.method !== 'POST') {
@@ -65,6 +110,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   const update = req.body as TelegramUpdate;
+  const hasWorker = Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET);
 
   try {
     if (update.callback_query) {
@@ -72,23 +118,50 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const chatId = cq.message?.chat.id;
       const msgId = cq.message?.message_id;
       const data = cq.data || '';
-      await answerCallbackQuery(cq.id);
 
       if (!chatId || !msgId) {
+        await answerCallbackQuery(cq.id);
         return res.status(200).json({ ok: true });
       }
 
       if (data === 'menu:start') {
+        await answerCallbackQuery(cq.id);
         await editMessageText(chatId, msgId, WELCOME_TEXT, KEYBOARDS.mainMenu());
       } else if (data === 'menu:play') {
-        await editMessageText(chatId, msgId, '🎵 Send `/play <song name or audio URL>` or forward an MP3 file directly.', KEYBOARDS.mainMenu());
-      } else if (data === 'menu:player' || data === 'menu:nowplaying') {
+        await answerCallbackQuery(cq.id, 'Send /search <song>, /play <song/url>, or forward an MP3!');
+        await editMessageText(
+          chatId,
+          msgId,
+          [
+            '🎵 𝐇𝐎𝐖 𝐓𝐎 𝐒𝐄𝐋𝐄𝐂𝐓 & 𝐏𝐋𝐀𝐘 𝐌𝐔𝐒𝐈𝐂',
+            '',
+            '1️⃣ Search & Pick: Send /search Kesariya',
+            '2️⃣ Instant Play: Send /play Faded Alan Walker',
+            '3️⃣ Paste Link or Upload: Send a YouTube/MP3 link or audio file.',
+          ].join('\n'),
+          KEYBOARDS.player(false),
+        );
+      } else if (data.startsWith('pick:')) {
+        const rawRef = data.slice(5);
+        const source = rawRef.startsWith('yt:') ? `https://www.youtube.com/watch?v=${rawRef.slice(3)}` : rawRef;
+        await answerCallbackQuery(cq.id, hasWorker ? 'Playing selected track...' : 'VPS Audio Worker not linked yet!', !hasWorker);
+        const pRes = await callAudioBackend<{ title?: string }>('/player/play', {
+          chat_id: chatId,
+          source,
+          requested_by: cq.from.username || cq.from.first_name || 'User',
+        });
+        const text = pRes.ok
+          ? `🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆\n\n🎵 Song: ${pRes.data?.title || source}\n▶️ Status: Playing`
+          : `❌ ${pRes.error}`;
+        await editMessageText(chatId, msgId, text, KEYBOARDS.player(pRes.ok));
+      } else if (data === 'menu:player' || data === 'menu:nowplaying' || data === 'menu:queue') {
+        await answerCallbackQuery(cq.id);
         const st = await callAudioBackend<{
           title?: string; artist?: string; position?: number; duration?: number;
           volume?: number; muted?: boolean; status?: string; chat_title?: string;
-        }>('/player/status', {}, 'GET');
+        }>(`/player/status?chat_id=${chatId}`, {}, 'GET');
         if (!st.ok || !st.data) {
-          await editMessageText(chatId, msgId, `❌ ${st.error}`, KEYBOARDS.mainMenu());
+          await editMessageText(chatId, msgId, `🎧 𝐌𝐔𝐒𝐈𝐂 𝐏𝐋𝐀𝐘𝐄𝐑\n\n${getWorkerDiagnosticText('Music Player')}`, KEYBOARDS.mainMenu());
         } else {
           const d = st.data;
           const text = d.title
@@ -104,11 +177,12 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 '',
                 buildProgressBar(d.position ?? 0, d.duration ?? 100),
               ].join('\n')
-            : '🎧 𝐌𝐔𝐒𝐈𝐂 𝐏𝐋𝐀𝐘𝐄𝐑\n\nNo active track. Send /play <url or song>.';
+            : '🎧 𝐌𝐔𝐒𝐈𝐂 𝐏𝐋𝐀𝐘𝐄𝐑\n\nNo active track. Send /search <song> or /play <url>.';
           await editMessageText(chatId, msgId, text, KEYBOARDS.player(d.status === 'playing'));
         }
       } else if (data === 'menu:volume') {
-        const vol = await callAudioBackend<{ volume: number; muted: boolean }>('/volume/status', {}, 'GET');
+        await answerCallbackQuery(cq.id);
+        const vol = await callAudioBackend<{ volume: number; muted: boolean }>(`/volume/status?chat_id=${chatId}`, {}, 'GET');
         const vText = vol.ok && vol.data
           ? `🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n<  ${vol.data.muted ? '🔇 MUTED' : `🔊 ${vol.data.volume}%`}  >`
           : '🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n<  🔊 80%  >';
@@ -119,56 +193,80 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           chat_id: chatId,
           action,
         });
+        await answerCallbackQuery(cq.id, resVol.ok ? `Volume: ${resVol.data?.volume ?? 80}%` : 'VPS Audio Worker not linked', !resVol.ok);
         const vText = resVol.ok && resVol.data
           ? `🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n<  ${resVol.data.muted ? '🔇 MUTED' : `🔊 ${resVol.data.volume}%`}  >`
-          : `❌ ${resVol.error}`;
+          : `🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n${getWorkerDiagnosticText(`Volume ${action}`)}`;
         await editMessageText(chatId, msgId, vText, KEYBOARDS.volume());
       } else if (data.startsWith('player:')) {
         const action = data.slice(7);
         const pRes = await callAudioBackend<{ status?: string; title?: string }>(`/player/${action}`, { chat_id: chatId });
-        const text = pRes.ok ? `🎧 Playback updated: ${action.toUpperCase()}` : `❌ ${pRes.error}`;
+        await answerCallbackQuery(cq.id, pRes.ok ? `Playback: ${action.toUpperCase()}` : pRes.error, !pRes.ok);
+        const text = pRes.ok ? `🎧 Playback updated: ${action.toUpperCase()}` : `🎧 Playback (${action})\n\n${getWorkerDiagnosticText()}`;
         await editMessageText(chatId, msgId, text, KEYBOARDS.player(action === 'resume'));
-      } else if (data === 'menu:live') {
+      } else if (data === 'menu:live' || data === 'live:join_hint') {
+        await answerCallbackQuery(
+          cq.id,
+          data === 'live:join_hint' ? 'Paste any https://t.me/group_name link in chat to auto-join!' : undefined,
+          data === 'live:join_hint',
+        );
         const lRes = await callAudioBackend<{ active: boolean; group_title?: string }>('/live/status', {}, 'GET');
         const text = lRes.ok && lRes.data?.active
           ? `🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃\n\n✅ Personal Account: Connected\n🎧 Voice Chat: Active (${lRes.data.group_title})`
-          : '🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐏𝐀𝐍𝐄𝐋\n\nSend /joinlive https://t.me/group/123 to join a Voice Chat.';
+          : `🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐏𝐀𝐍𝐄𝐋\n\nSend /joinlive https://t.me/group/123 (or paste the link directly).\n\n${hasWorker ? '' : getWorkerDiagnosticText('Auto Live Join')}`;
         await editMessageText(chatId, msgId, text, KEYBOARDS.live());
       } else if (data === 'live:leave') {
         const lRes = await callAudioBackend('/live/leave', { chat_id: chatId });
-        await editMessageText(chatId, msgId, lRes.ok ? '🚪 Left Voice Chat cleanly.' : `❌ ${lRes.error}`, KEYBOARDS.live());
+        await answerCallbackQuery(cq.id, lRes.ok ? 'Left Voice Chat cleanly.' : lRes.error, !lRes.ok);
+        await editMessageText(chatId, msgId, lRes.ok ? '🚪 Left Voice Chat cleanly.' : getWorkerDiagnosticText('Leave Live'), KEYBOARDS.live());
       } else if (data === 'menu:account' || data.startsWith('account:')) {
-        if (data === 'account:reconnect') {
+        const op = data === 'menu:account' ? 'status' : data.slice(8);
+        if (op === 'reconnect' && hasWorker) {
+          await answerCallbackQuery(cq.id, 'Reconnecting Personal Account...');
           await playAnimatedSequence(chatId, ANIMATION_PRESETS.reconnect, KEYBOARDS.account());
         } else {
-          if (data === 'account:connect' || data === 'account:disconnect') {
-            await callAudioBackend(`/account/${data.split(':')[1]}`, {});
-          }
-          const aRes = await callAudioBackend<{ name?: string; username?: string; status?: string }>('/account/status', {}, 'GET');
+          const aRes = await callAudioBackend<{ display_name?: string; username?: string; status?: string }>(
+            `/account/${op}`,
+            {},
+            op === 'status' ? 'GET' : 'POST',
+          );
+          await answerCallbackQuery(
+            cq.id,
+            op === 'status'
+              ? undefined
+              : aRes.ok
+                ? `Account ${op} completed.`
+                : 'VPS Audio Worker not linked yet!',
+            op !== 'status' && !aRes.ok,
+          );
           const text = aRes.ok && aRes.data
-            ? `👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓\n\nName: ${aRes.data.name}\nUsername: ${aRes.data.username}\nStatus: ${aRes.data.status}`
-            : `❌ ${aRes.error}`;
+            ? `👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓\n\nName: ${aRes.data.display_name || 'Connected'}\nUsername: ${aRes.data.username || '@account'}\nStatus: ${aRes.data.status || 'connected'}`
+            : `👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n${getWorkerDiagnosticText(`Account ${op.toUpperCase()}`)}`;
           await editMessageText(chatId, msgId, text, KEYBOARDS.account());
         }
       } else if (data === 'menu:owner') {
+        await answerCallbackQuery(cq.id);
         if (!isOwner(cq.from.id)) {
           await sendMessage(chatId, '⛔ Owner permission required.');
         } else {
-          const st = await callAudioBackend<{ users?: number; groups?: number; active_calls?: number }>('/system/stats', {}, 'GET');
+          const st = await callAudioBackend<{ active_calls?: number }>('/health', {}, 'GET');
           await editMessageText(
             chatId,
             msgId,
-            `👑 𝐎𝐖𝐍𝐄𝐑 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃\n\nActive Calls: ${st.data?.active_calls ?? 0}\nBackend: ${st.ok ? 'Online' : 'Offline'}`,
+            `👑 𝐎𝐖𝐍𝐄𝐑 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃\n\nActive Calls: ${st.data?.active_calls ?? 0}\nBackend: ${st.ok ? 'Online' : 'Not Linked'}`,
             KEYBOARDS.mainMenu(),
           );
         }
       } else if (data === 'menu:help') {
+        await answerCallbackQuery(cq.id);
         await editMessageText(
           chatId,
           msgId,
-          '📚 Commands:\n/start /play /pause /resume /skip /stop /queue /nowplaying /volume /mute /unmute /joinlive /leavelive /live /account /connect /disconnect /reconnect /ping /stats /status',
+          '📚 Commands:\n/start /search /play /pause /resume /skip /stop /queue /nowplaying /volume /mute /unmute /joinlive /leavelive /live /account /connect /disconnect /reconnect /ping /stats /status',
           KEYBOARDS.mainMenu(),
         );
+      } else {
+        await answerCallbackQuery(cq.id);
       }
       return res.status(200).json({ ok: true });
     }
@@ -180,24 +278,68 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       const [rawCmd, ...rest] = text.split(/\s+/);
       const cmd = rawCmd.toLowerCase().split('@')[0];
       const arg = rest.join(' ').trim();
+      const audioDoc =
+        msg.document &&
+        (msg.document.mime_type?.startsWith('audio/') ||
+          /\.(mp3|m4a|ogg|wav|flac|aac)$/i.test(msg.document.file_name || ''))
+          ? msg.document
+          : undefined;
 
       if (cmd === '/start') {
         await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.welcome, WELCOME_TEXT], KEYBOARDS.mainMenu());
-      } else if (cmd === '/joinlive' || text.startsWith('https://t.me/')) {
+      } else if (cmd === '/joinlive' || text.includes('t.me/') || text.includes('telegram.me/')) {
         const link = cmd === '/joinlive' ? arg : text;
         if (!link) {
           await sendMessage(chatId, '❌ Invalid Live Link\nUsage: /joinlive https://t.me/example_group/123');
         } else {
-          const joinRes = await callAudioBackend<{ group_title?: string }>('/live/join', { link, requested_by: msg.from?.id });
+          const joinRes = await callAudioBackend<{ group_title?: string }>('/live/join', {
+            link,
+            chat_id: chatId,
+            requested_by: msg.from?.id,
+          });
           const finalText = joinRes.ok
             ? `🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃\n\n✅ Personal Account: Connected\n🎧 Voice Chat: Active\n📍 Group: ${joinRes.data?.group_title || link}\n⚡ Connection: Stable`
-            : `❌ ${joinRes.error}`;
+            : `❌ Auto Live Join Failed\n\n${hasWorker ? joinRes.error : getWorkerDiagnosticText('Auto Live Join')}`;
           await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.joinLive(link), finalText], KEYBOARDS.live());
         }
-      } else if (cmd === '/play' || msg.audio) {
-        const query = msg.audio ? `tg_file:${msg.audio.file_id}` : arg;
+      } else if (cmd === '/search') {
+        if (!arg) {
+          await sendMessage(chatId, '🔍 Usage: /search <song name>');
+        } else {
+          const sRes = await callAudioBackend<{ results?: Array<{ id?: string; title?: string; url?: string }> }>('/player/search', {
+            query: arg,
+            limit: 5,
+          });
+          const results = sRes.data?.results || [];
+          if (!sRes.ok || results.length === 0) {
+            await sendMessage(chatId, hasWorker ? `❌ No tracks found for "${arg}".` : getWorkerDiagnosticText('Music Search'));
+          } else {
+            const markup: InlineKeyboardMarkup = {
+              inline_keyboard: [
+                ...results.slice(0, 5).map((item, idx) => [
+                  {
+                    text: `${idx + 1}. 🎵 ${String(item.title || 'Track').slice(0, 42)}`,
+                    callback_data: `pick:${item.id ? `yt:${item.id}` : String(item.url || '').slice(0, 56)}`,
+                  },
+                ]),
+                [{ text: '🔙 Main Menu', callback_data: 'menu:start' }],
+              ],
+            };
+            await sendMessage(chatId, `🔍 𝐒𝐄𝐋𝐄𝐂𝐓 𝐌𝐔𝐒𝐈𝐂 𝐅𝐎𝐑: ${arg}`, markup);
+          }
+        }
+      } else if (cmd === '/play' || msg.audio || msg.voice || audioDoc || isMediaUrl(text)) {
+        const query = msg.audio
+          ? `tg_file:${msg.audio.file_id}`
+          : msg.voice
+            ? `tg_file:${msg.voice.file_id}`
+            : audioDoc
+              ? `tg_file:${audioDoc.file_id}`
+              : cmd === '/play'
+                ? arg
+                : text;
         if (!query) {
-          await sendMessage(chatId, '❌ Provide a song URL or audio file: /play <url>');
+          await sendMessage(chatId, '❌ Provide a song name, URL, or audio file: /play <song>');
         } else {
           const pRes = await callAudioBackend<{ title?: string; artist?: string }>('/player/play', {
             chat_id: chatId,
@@ -206,8 +348,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           const finalText = pRes.ok
             ? `🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆\n\n🎵 Song: ${pRes.data?.title || query}\n▶️ Status: Playing`
-            : `❌ ${pRes.error}`;
-          await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.playMusic(query), finalText], KEYBOARDS.player(true));
+            : `❌ Cannot Play Music\n\n${hasWorker ? pRes.error : getWorkerDiagnosticText('Play Music')}`;
+          await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.playMusic(query), finalText], KEYBOARDS.player(pRes.ok));
         }
       } else if (cmd === '/volume') {
         const volNum = Number(arg);
@@ -234,10 +376,10 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else {
           const op = cmd === '/account' ? 'status' : cmd.slice(1);
           const r = await callAudioBackend(`/account/${op}`, {}, op === 'status' ? 'GET' : 'POST');
-          await sendMessage(chatId, r.ok ? `👤 Account ${op}: ${JSON.stringify(r.data)}` : `❌ ${r.error}`, KEYBOARDS.account());
+          await sendMessage(chatId, r.ok ? `👤 Account ${op}: ${JSON.stringify(r.data)}` : getWorkerDiagnosticText(cmd), KEYBOARDS.account());
         }
       } else {
-        await sendMessage(chatId, 'Send /start to open the Premium Music Bot control menu or /help for commands.', KEYBOARDS.mainMenu());
+        await sendMessage(chatId, 'Send /start to open the control menu, /search <song> to pick music, or paste a https://t.me/... Voice Chat link.', KEYBOARDS.mainMenu());
       }
     }
 
