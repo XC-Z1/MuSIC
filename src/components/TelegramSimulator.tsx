@@ -26,9 +26,38 @@ const BUTTON_STYLE_CLASSES: Record<'primary' | 'danger' | 'success', string> = {
 };
 
 function BotMessageBody({ message }: { message: BotMessage }) {
+  const frames = message.animationFrames;
+  const [frameIndex, setFrameIndex] = useState<number>(
+    frames && frames.length > 0 ? 0 : -1,
+  );
+
+  useEffect(() => {
+    if (!frames || frames.length <= 1) {
+      setFrameIndex(-1);
+      return;
+    }
+    setFrameIndex(0);
+    let current = 0;
+    const timer = window.setInterval(() => {
+      current += 1;
+      if (current >= frames.length - 1) {
+        setFrameIndex(frames.length - 1);
+        window.clearInterval(timer);
+      } else {
+        setFrameIndex(current);
+      }
+    }, 240);
+    return () => window.clearInterval(timer);
+  }, [message.id, frames]);
+
+  const activeText =
+    frames && frameIndex >= 0 && frameIndex < frames.length
+      ? frames[frameIndex]
+      : message.text;
+
   return (
     <pre className="whitespace-pre-wrap break-words font-sans text-[13.5px] leading-relaxed text-slate-100 animate-[fadeIn_0.2s_ease-out]">
-      {message.text}
+      {activeText}
     </pre>
   );
 }

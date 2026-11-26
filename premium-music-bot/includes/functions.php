@@ -48,13 +48,41 @@ function sendTelegramMessage(array $config, int|string $chatId, string $text, ?a
     return telegramApiCall($config, 'sendMessage', $payload);
 }
 
-function sendTelegramEffectMessage(array $config, int|string $chatId, string $chatType, string $text, ?array $replyMarkup = null, ?string $effectId = null): ?int
-{
+function sendTelegramEffectMessage(
+    array $config,
+    int|string $chatId,
+    string $chatType,
+    string $text,
+    ?array $replyMarkup = null,
+    ?string $effectId = null,
+    array $introFrames = [],
+    int $delayMicros = 320000
+): ?int {
     telegramApiCall($config, 'sendChatAction', ['chat_id' => $chatId, 'action' => 'typing']);
     $useEffect = ($chatType === 'private' && $effectId !== null && $effectId !== '') ? $effectId : null;
-    $res = sendTelegramMessage($config, $chatId, $text, $replyMarkup, $useEffect);
-    $messageId = $res['result']['message_id'] ?? null;
-    return is_int($messageId) ? $messageId : null;
+    $frames = array_values($introFrames);
+    $frames[] = $text;
+    $isSingle = count($frames) === 1;
+
+    $first = sendTelegramMessage(
+        $config,
+        $chatId,
+        (string) $frames[0],
+        $isSingle ? $replyMarkup : null,
+        $useEffect
+    );
+    $messageId = $first['result']['message_id'] ?? null;
+    if (!is_int($messageId) || $isSingle) {
+        return is_int($messageId) ? $messageId : null;
+    }
+
+    $count = count($frames);
+    for ($i = 1; $i < $count; $i++) {
+        usleep($delayMicros);
+        $markup = ($i === $count - 1) ? $replyMarkup : null;
+        editTelegramMessage($config, $chatId, $messageId, (string) $frames[$i], $markup);
+    }
+    return $messageId;
 }
 
 function editTelegramMessage(array $config, int|string $chatId, int $messageId, string $text, ?array $replyMarkup = null): array
@@ -71,13 +99,13 @@ function editTelegramMessage(array $config, int|string $chatId, int $messageId, 
     return telegramApiCall($config, 'editMessageText', $payload);
 }
 
-function playAnimatedTelegramFrames(array $config, int|string $chatId, array $frames, ?array $finalMarkup = null, int $delayMicros = 0): ?int
+function playAnimatedTelegramFrames(array $config, int|string $chatId, array $frames, ?array $finalMarkup = null, int $delayMicros = 320000): ?int
 {
     if (empty($frames)) {
         return null;
     }
-    $finalText = (string) end($frames);
-    return sendTelegramEffectMessage($config, $chatId, 'private', $finalText, $finalMarkup, '5046509860389126442');
+    $finalText = (string) array_pop($frames);
+    return sendTelegramEffectMessage($config, $chatId, 'private', $finalText, $finalMarkup, '5046509860389126442', $frames, $delayMicros);
 }
 
 function callPythonAudioBackend(array $config, string $endpoint, array $payload = [], string $method = 'POST'): array

@@ -43,7 +43,10 @@ function handleJoinLiveCommand(PDO $pdo, array $config, int|string $chatId, int 
         '⚡ Connection: Stable',
     ]));
 
-    sendTelegramEffectMessage($config, $chatId, 'private', $final, buildLiveControlKeyboard(), '5161554034041029689');
+    sendTelegramEffectMessage($config, $chatId, 'private', $final, buildLiveControlKeyboard(), '5161554034041029689', [
+        toSmallCaps('🎤 Connecting Voice Chat...') . "\n▁▂▃▄▅▆▇  ▰▱▱▱▱",
+        toSmallCaps('🔊 Syncing Live Stream...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
+    ]);
 }
 
 function handleLeaveLiveCommand(PDO $pdo, array $config, int|string $chatId, int $groupId): void

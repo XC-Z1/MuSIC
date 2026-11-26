@@ -10,7 +10,10 @@ function handleStartCommand(array $config, int|string $chatId, ?int $editMessage
         return;
     }
 
-    sendTelegramEffectMessage($config, $chatId, $chatType, $welcome, $markup, '5046509860389126442');
+    sendTelegramEffectMessage($config, $chatId, $chatType, $welcome, $markup, '5046509860389126442', [
+        toSmallCaps('⚡ Booting Music Spam Bot...') . "\n▁▂▃▄▅▆▇  ▰▱▱▱▱",
+        toSmallCaps('🎧 Syncing Live Controls...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
+    ]);
 }
 
 function handleHelpCommand(array $config, int|string $chatId, ?int $editMessageId = null): void

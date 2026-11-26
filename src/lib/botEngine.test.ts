@@ -24,7 +24,7 @@ test('renderProgressBar moves indicator smoothly across track duration', () => {
   assert.equal(end.indexOf('●'), 9);
 });
 
-test('/joinlive validates link and connects personal account to voice chat with colored buttons and native effect', () => {
+test('/joinlive validates link and connects personal account to voice chat with colored buttons, native effect, and equalizer frames', () => {
   const initial = createInitialBotState();
   assert.equal(initial.botUsername, 'MUSIC SPAM BOT');
   assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[0]?.style, 'success');
@@ -36,6 +36,9 @@ test('/joinlive validates link and connects personal account to voice chat with 
   assert.equal(joined.liveSession.voiceChatId, '88');
   const lastMsg = joined.messages[joined.messages.length - 1];
   assert.equal(lastMsg.effectBadge, '🤩 Live Effect');
+  assert.ok((lastMsg.animationFrames?.length ?? 0) === 3);
+  assert.ok(lastMsg.animationFrames?.[0]?.includes('▁▂▃▄▅▆▇  ▰▱▱▱▱'));
+  assert.ok(lastMsg.animationFrames?.[1]?.includes('▇▆▅▄▃▂▁  ▰▰▰▰▰'));
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[0]?.style, 'success');
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[1]?.style, 'danger');
 });

@@ -1,6 +1,6 @@
 import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { TELEGRAM_EFFECTS, sendEffectMessage } from '../lib/animations';
+import { EQUALIZER_PRESETS, TELEGRAM_EFFECTS, sendEffectMessage } from '../lib/animations';
 import { callAudioBackend } from '../lib/backendClient';
 import {
   KEYBOARDS,
@@ -343,7 +343,14 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : undefined;
 
       if (cmd === '/start') {
-        await sendEffectMessage(chatId, chatType, WELCOME_TEXT, KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.confetti);
+        await sendEffectMessage(
+          chatId,
+          chatType,
+          WELCOME_TEXT,
+          KEYBOARDS.mainMenu(),
+          TELEGRAM_EFFECTS.confetti,
+          EQUALIZER_PRESETS.welcome,
+        );
       } else if (cmd === '/joinlive' || text.includes('t.me/') || text.includes('telegram.me/')) {
         const link = cmd === '/joinlive' ? arg : text;
         if (!link) {
@@ -363,6 +370,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             finalText,
             KEYBOARDS.live(),
             joinRes.ok ? TELEGRAM_EFFECTS.star : undefined,
+            EQUALIZER_PRESETS.joinLive,
           );
         }
       } else if (cmd === '/search') {
@@ -425,6 +433,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             finalText,
             KEYBOARDS.player(pRes.ok),
             pRes.ok ? TELEGRAM_EFFECTS.fire : undefined,
+            EQUALIZER_PRESETS.playMusic,
           );
         }
       } else if (cmd === '/volume') {

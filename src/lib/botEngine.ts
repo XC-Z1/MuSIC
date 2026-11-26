@@ -53,6 +53,7 @@ export interface BotMessage {
   inlineKeyboard?: BotInlineButton[][];
   timestamp: string;
   effectBadge?: string;
+  animationFrames?: string[];
   kind?: 'welcome' | 'player' | 'volume' | 'live' | 'account' | 'owner' | 'help' | 'error' | 'queue' | 'info';
 }
 
@@ -643,6 +644,11 @@ export function processBotInput(
           inlineKeyboard: w.inlineKeyboard,
           kind: 'welcome',
           effectBadge: '🎉 Confetti Effect',
+          animationFrames: [
+            `${toSmallCaps('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            w.text,
+          ],
         }),
       );
       return state;
@@ -844,6 +850,14 @@ export function processBotInput(
           inlineKeyboard: a.inlineKeyboard,
           kind: 'account',
           effectBadge: action === 'reconnect' || action === 'connect' ? '❤️ Connected Effect' : undefined,
+          animationFrames:
+            action === 'reconnect' || action === 'connect'
+              ? [
+                  `${toSmallCaps('🔐 Verifying MTProto Session...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+                  `${toSmallCaps('✅ Personal Account Online!')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+                  a.text,
+                ]
+              : undefined,
         }),
       );
       return state;
@@ -866,6 +880,11 @@ export function processBotInput(
           inlineKeyboard: o.inlineKeyboard,
           kind: 'owner',
           effectBadge: '⚡ Restarted',
+          animationFrames: [
+            `${toSmallCaps('🔄 Restarting Audio Worker...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🎚️ Syncing FFmpeg & PyTgCalls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            o.text,
+          ],
         }),
       );
       return state;
@@ -885,6 +904,11 @@ export function processBotInput(
           inlineKeyboard: w.inlineKeyboard,
           kind: 'welcome',
           effectBadge: '🎉 Confetti Effect',
+          animationFrames: [
+            `${toSmallCaps('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            w.text,
+          ],
         }),
       );
       return state;
@@ -942,6 +966,11 @@ export function processBotInput(
           inlineKeyboard: liveMsg.inlineKeyboard,
           kind: 'live',
           effectBadge: '🤩 Live Effect',
+          animationFrames: [
+            `${toSmallCaps('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps(`🔊 Joining ${parsed.chatIdentifier}...`)}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            liveMsg.text,
+          ],
         }),
       );
       return state;
@@ -1043,6 +1072,11 @@ export function processBotInput(
           inlineKeyboard: player.inlineKeyboard,
           kind: 'player',
           effectBadge: '🔥 Fire Effect',
+          animationFrames: [
+            `${toSmallCaps('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🎚️ Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            player.text,
+          ],
         }),
       );
       return state;

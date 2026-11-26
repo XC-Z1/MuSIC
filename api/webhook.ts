@@ -47,6 +47,8 @@ interface TelegramUpdate {
   };
 }
 
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
 const SMALL_CAPS_MAP: Record<string, string> = {
   a: 'ᴀ', b: 'ʙ', c: 'ᴄ', d: 'ᴅ', e: 'ᴇ', f: 'ғ', g: 'ɢ', h: 'ʜ', i: 'ɪ',
   j: 'ᴊ', k: 'ᴋ', l: 'ʟ', m: 'ᴍ', n: 'ɴ', o: 'ᴏ', p: 'ᴘ', q: 'ǫ', r: 'ʀ',
@@ -299,23 +301,43 @@ async function sendEffectMessage(
   text: string,
   replyMarkup?: InlineMarkup,
   effectId?: string,
+  introFrames: string[] = [],
+  delayMs = 240,
 ): Promise<void> {
   await tgCall(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
   const useEffect = chatType === 'private' && Boolean(effectId);
-  const basePayload: Record<string, unknown> = {
+  const frames = [...introFrames, text];
+  const isSingle = frames.length === 1;
+
+  const firstPayload: Record<string, unknown> = {
     chat_id: chatId,
-    text,
+    text: frames[0],
     disable_web_page_preview: true,
-    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    ...(isSingle && replyMarkup ? { reply_markup: replyMarkup } : {}),
   };
 
-  const res = await tgCall(
+  let res = await tgCall(
     token,
     'sendMessage',
-    useEffect ? { ...basePayload, message_effect_id: effectId } : basePayload,
+    useEffect ? { ...firstPayload, message_effect_id: effectId } : firstPayload,
   );
   if (!res.ok && useEffect) {
-    await tgCall(token, 'sendMessage', basePayload);
+    res = await tgCall(token, 'sendMessage', firstPayload);
+  }
+
+  const msgId = res.result?.message_id;
+  if (!msgId || isSingle) return;
+
+  for (let i = 1; i < frames.length; i++) {
+    await sleep(delayMs);
+    const isLast = i === frames.length - 1;
+    await tgCall(token, 'editMessageText', {
+      chat_id: chatId,
+      message_id: msgId,
+      text: frames[i],
+      disable_web_page_preview: true,
+      ...(isLast && replyMarkup ? { reply_markup: replyMarkup } : {}),
+    });
   }
 }
 
@@ -748,6 +770,10 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           WELCOME_TEXT,
           mainKeyboard(),
           TELEGRAM_EFFECTS.confetti,
+          [
+            `${sc('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${sc('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+          ],
         );
       } else if (cmd === '/help') {
         await tgCall(botToken, 'sendMessage', {
@@ -774,6 +800,10 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             final,
             liveKeyboard(),
             jRes.ok ? TELEGRAM_EFFECTS.star : undefined,
+            [
+              `${sc('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+              `${sc('🔊 Syncing Live Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            ],
           );
         }
       } else if (cmd === '/search') {
@@ -845,6 +875,10 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             final,
             playerKeyboard(Boolean(pRes.ok)),
             pRes.ok ? TELEGRAM_EFFECTS.fire : undefined,
+            [
+              `${sc('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+              `${sc('🎚️ Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            ],
           );
         }
       } else if (cmd === '/volume') {
