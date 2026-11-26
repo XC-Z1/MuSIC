@@ -289,13 +289,32 @@ function verifyWebhookHeader(req: VercelReq): boolean {
   return a.length === b.length && crypto.timingSafeEqual(a, b);
 }
 
+async function readJsonBody(req: VercelReq): Promise<TelegramUpdate> {
+  if (req.body && typeof req.body === 'object') {
+    return req.body as TelegramUpdate;
+  }
+  if (typeof req.body === 'string' && req.body.trim()) {
+    return JSON.parse(req.body) as TelegramUpdate;
+  }
+  const chunks: Buffer[] = [];
+  for await (const chunk of req) {
+    chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk));
+  }
+  const raw = Buffer.concat(chunks).toString('utf8').trim();
+  return raw ? (JSON.parse(raw) as TelegramUpdate) : {};
+}
+
 export default async function handler(req: VercelReq, res: VercelRes) {
   if (req.method === 'GET') {
+    const botConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN);
     res.status(200).json({
       ok: true,
       service: 'telestream-vercel-webhook',
-      botConfigured: Boolean(process.env.TELEGRAM_BOT_TOKEN),
+      botConfigured,
       audioWorkerConfigured: Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET),
+      ...(botConfigured
+        ? {}
+        : { nextStep: 'Add TELEGRAM_BOT_TOKEN in Vercel Settings -> Environment Variables and Redeploy.' }),
     });
     return;
   }
@@ -316,7 +335,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
     return;
   }
 
-  const update = (typeof req.body === 'string' ? JSON.parse(req.body) : req.body || {}) as TelegramUpdate;
+  const update = await readJsonBody(req);
 
   try {
     if (update.callback_query) {
