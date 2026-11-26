@@ -92,12 +92,59 @@ const WELCOME_TEXT = [
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
-    const botConfigured = Boolean(process.env.TELEGRAM_BOT_TOKEN);
+    const botToken = process.env.TELEGRAM_BOT_TOKEN || '';
+    const botConfigured = Boolean(botToken);
+    const audioWorkerConfigured = Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET);
+    const parsedUrl = new URL(req.url || '/api/webhook', 'https://localhost');
+    const isSetup = parsedUrl.searchParams.get('setup') === '1';
+    const isPing = isSetup || parsedUrl.searchParams.get('ping') === '1';
+
+    let webhookUrl: string | undefined;
+    let webhookUpdated = false;
+    let audioWorkerOnline: boolean | undefined;
+
+    if (isPing && botToken) {
+      const host = (req.headers['x-forwarded-host'] || req.headers.host || '').toString().split(',')[0].trim();
+      const targetUrl = host ? `https://${host}/api/webhook` : '';
+      try {
+        const infoRes = await fetch(`https://api.telegram.org/bot${botToken}/getWebhookInfo`);
+        const infoJson = (await infoRes.json()) as { result?: { url?: string } };
+        webhookUrl = infoJson.result?.url || '';
+        if (isSetup && targetUrl && webhookUrl !== targetUrl) {
+          const secret = process.env.TELEGRAM_WEBHOOK_SECRET || '';
+          const setRes = await fetch(`https://api.telegram.org/bot${botToken}/setWebhook`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              url: targetUrl,
+              allowed_updates: ['message', 'callback_query'],
+              ...(secret ? { secret_token: secret } : {}),
+            }),
+          });
+          const setJson = (await setRes.json()) as { ok?: boolean };
+          if (setJson.ok) {
+            webhookUrl = targetUrl;
+            webhookUpdated = true;
+          }
+        }
+      } catch {
+        // Non-fatal
+      }
+    }
+
+    if (isPing && audioWorkerConfigured) {
+      const h = await callAudioBackend('/health', {}, 'GET');
+      audioWorkerOnline = h.ok;
+    }
+
     return res.status(200).json({
       ok: true,
+      awake: true,
       service: 'premium-music-bot-vercel-webhook',
       botConfigured,
-      audioWorkerConfigured: Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET),
+      audioWorkerConfigured,
+      ...(webhookUrl !== undefined ? { webhookUrl, webhookUpdated } : {}),
+      ...(audioWorkerOnline !== undefined ? { audioWorkerOnline } : {}),
     });
   }
 

@@ -4,8 +4,11 @@ declare(strict_types=1);
 function verifyTelegramWebhookSecret(array $config): bool
 {
     $expected = $config['webhook_secret'] ?? '';
+    if ($expected === '') {
+        return true;
+    }
     $provided = $_SERVER['HTTP_X_TELEGRAM_BOT_API_SECRET_TOKEN'] ?? '';
-    if ($expected === '' || $provided === '') {
+    if ($provided === '') {
         return false;
     }
     return hash_equals($expected, $provided);
