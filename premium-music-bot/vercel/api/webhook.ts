@@ -115,17 +115,17 @@ function getWorkerDiagnosticText(actionLabel?: string): string {
     [
       actionLabel ? `⚡ Action: ${actionLabel}` : '',
       '🤖 Bot Webhook: ✅ Online (Vercel)',
-      `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (must also be in Audio Worker)' : '⚪ Not set'}`,
+      `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (Redeployed)' : '⚪ Add TELEGRAM_API_ID & TELEGRAM_API_HASH in Vercel & Redeploy'}`,
       `🖥️ Audio Worker: ${hasWorker ? '✅ Linked' : '❌ Not Linked Yet'}`,
       '',
       hasWorker
-        ? 'Audio Worker is linked. Tap Connect/Reconnect or check worker logs.'
+        ? 'Audio Worker is linked! Open https://<your-worker-url>/setup in Chrome if you still need to verify OTP, or tap Connect.'
         : [
-            'ℹ️ Vercel serverless cannot hold live MTProto Voice Chat streams alone.',
-            'No VPS needed — deploy backend/Dockerfile free on Koyeb/Render/HF Spaces:',
-            '1️⃣ Deploy premium-music-bot/backend via Docker on Render or Koyeb',
-            '2️⃣ Set API_ID, API_HASH, SESSION & AUDIO_BACKEND_API_SECRET there',
-            '3️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel & Redeploy.',
+            'ℹ️ Vercel stops every 30s, so live Voice Chat audio needs a free Docker Worker (No VPS needed!):',
+            '1️⃣ Deploy premium-music-bot/backend free on Hugging Face Spaces (Docker) or Koyeb/Render',
+            '2️⃣ Set TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN & AUDIO_BACKEND_API_SECRET there',
+            '3️⃣ Open https://<your-worker-url>/setup on your phone Chrome to login with Phone + OTP',
+            '4️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel Env Vars & Redeploy.',
           ].join('\n'),
     ]
       .filter(Boolean)

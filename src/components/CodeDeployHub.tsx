@@ -124,17 +124,17 @@ export const CodeDeployHub: React.FC<CodeDeployHubProps> = ({ files, loading }) 
   return (
     <div className="space-y-6">
       {/* Architecture & Security Advisory */}
-      <section aria-label="Deployment Architecture" className="rounded-xl border border-white/10 bg-[#111827] p-5">
+      <section aria-label="Deployment Architecture" className="rounded-xl border border-white/10 bg-[#111827] p-5 space-y-4">
         <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
           <div className="space-y-1.5">
             <div className="flex items-center gap-2 text-sky-400">
               <ShieldCheck className="h-4 w-4" aria-hidden="true" />
               <h2 className="text-sm font-semibold text-slate-100">
-                Production Split Architecture: Vercel / cPanel Webhook + VPS MTProto Audio Worker
+                Mobile Zero-VPS Setup: Vercel Bot Webhook + Free Docker Audio Worker
               </h2>
             </div>
             <p className="text-xs text-slate-400 max-w-3xl leading-relaxed">
-              Vercel Serverless and cPanel PHP host the animated Telegram Bot Webhook, Inline Keyboards, and Owner API. Because serverless functions terminate after 30s and cPanel blocks persistent MTProto/WebRTC audio streams, the Personal Account MTProto client (Pyrogram + PyTgCalls + FFmpeg) runs on a VPS and receives HMAC-SHA256 signed commands from Vercel or PHP. Always revoke any token pasted into chat and store secrets exclusively in Environment Variables.
+              Vercel hosts your Bot Webhook, colored buttons, animations, and volume commands 24/7. Because Vercel serverless functions pause after 30s and cannot hold continuous Voice Chat WebRTC streams, deploy <span className="font-mono text-slate-200">premium-music-bot/backend/</span> free on Hugging Face Spaces (Docker) or Koyeb/Render—then open <span className="font-mono text-slate-200">/setup</span> on your phone browser to sign in with Phone + OTP (no terminal needed). Keep API credentials and tokens exclusively in Environment Variables.
             </p>
           </div>
           <a
@@ -145,6 +145,26 @@ export const CodeDeployHub: React.FC<CodeDeployHubProps> = ({ files, loading }) 
             <Download className="h-4 w-4" aria-hidden="true" />
             Download Complete ZIP ({files.length} files)
           </a>
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3 pt-1">
+          <div className="rounded-lg border border-white/10 bg-[#0B1120] p-3 space-y-1">
+            <p className="text-xs font-semibold text-slate-200">1. Free Docker Worker (No VPS)</p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Upload <span className="font-mono text-slate-300">premium-music-bot/backend</span> to a free Docker Space (Hugging Face Spaces / Koyeb) and add <span className="font-mono text-slate-300">TELEGRAM_API_ID</span>, <span className="font-mono text-slate-300">TELEGRAM_API_HASH</span>, <span className="font-mono text-slate-300">TELEGRAM_BOT_TOKEN</span>, and <span className="font-mono text-slate-300">AUDIO_BACKEND_API_SECRET</span>.
+            </p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-[#0B1120] p-3 space-y-1">
+            <p className="text-xs font-semibold text-slate-200">2. Phone Chrome OTP Login</p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Open <span className="font-mono text-slate-300">https://your-worker-url/setup</span> in Chrome on your phone, enter your Secret, Phone Number, and Telegram OTP to connect your personal account live.
+            </p>
+          </div>
+          <div className="rounded-lg border border-white/10 bg-[#0B1120] p-3 space-y-1">
+            <p className="text-xs font-semibold text-slate-200">3. Link Vercel &amp; Redeploy</p>
+            <p className="text-[11px] text-slate-400 leading-relaxed">
+              Add <span className="font-mono text-slate-300">AUDIO_BACKEND_URL</span>, <span className="font-mono text-slate-300">AUDIO_BACKEND_API_SECRET</span>, <span className="font-mono text-slate-300">TELEGRAM_API_ID</span>, and <span className="font-mono text-slate-300">TELEGRAM_API_HASH</span> to Vercel Env Vars, then Redeploy.
+            </p>
+          </div>
         </div>
       </section>
 
