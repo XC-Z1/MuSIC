@@ -48,6 +48,9 @@ function handleVolumeAction(PDO $pdo, array $config, int|string $chatId, int $gr
     } else {
         sendTelegramEffectMessage($config, $chatId, 'private', $text, $markup, '5104841245755180586', [
             toSmallCaps('🎚️ Opening Volume Control...') . "\n▁▂▃▄▅▆▇  ▰▱▱▱▱",
+            toSmallCaps('🎚️ Opening Volume Control...') . "\n▂▄▆▇▆▄▂  ▰▰▱▱▱",
+            toSmallCaps('🎚️ Opening Volume Control...') . "\n▄▆▇▅▃▅▇  ▰▰▰▱▱",
+            toSmallCaps('🔥 Volume Range: 10% – 200%...') . "\n▆▇▅▃▂▄▆  ▰▰▰▰▱",
             toSmallCaps('🔥 Volume Range: 10% – 200%...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
         ]);
     }

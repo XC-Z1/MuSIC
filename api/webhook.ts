@@ -163,15 +163,15 @@ function mainKeyboard(): InlineMarkup {
     inline_keyboard: [
       [
         { text: sc('🎵 Play Music'), callback_data: 'menu:play', style: 'success' },
+        { text: sc('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
       ],
       [
-        { text: sc('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
         { text: sc('🎤 Auto Live Join'), callback_data: 'menu:live', style: 'success' },
+        { text: sc('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: sc('📊 Now Playing'), callback_data: 'menu:nowplaying', style: 'primary' },
         { text: sc('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
-        { text: sc('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: sc('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },
@@ -179,6 +179,18 @@ function mainKeyboard(): InlineMarkup {
       ],
     ],
   };
+}
+
+function makeEqualizerFrames(startLabel: string, endLabel: string): string[] {
+  const s1 = sc(startLabel);
+  const s2 = sc(endLabel);
+  return [
+    `${s1}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+    `${s1}\n▂▄▆▇▆▄▂  ▰▰▱▱▱`,
+    `${s1}\n▄▆▇▅▃▅▇  ▰▰▰▱▱`,
+    `${s2}\n▆▇▅▃▂▄▆  ▰▰▰▰▱`,
+    `${s2}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+  ];
 }
 
 function playerKeyboard(isPlaying = true): InlineMarkup {
@@ -360,7 +372,7 @@ async function sendEffectMessage(
   replyMarkup?: InlineMarkup,
   effectId?: string,
   introFrames: string[] = [],
-  delayMs = 240,
+  delayMs = 150,
 ): Promise<void> {
   await tgCall(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
   const useEffect = chatType === 'private' && Boolean(effectId);
@@ -627,10 +639,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           guideText,
           playGuideKeyboard(),
           TELEGRAM_EFFECTS.fire,
-          [
-            `${sc('🎵 Opening Music Set...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${sc('🔥 Ready For Music Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-          ],
+          makeEqualizerFrames('🎵 Opening Music Set...', '🔥 Ready For Music Stream...'),
         );
       } else if (data.startsWith('pick:')) {
         const rawRef = data.slice(5);
@@ -655,10 +664,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           text,
           playerKeyboard(Boolean(pRes.ok)),
           TELEGRAM_EFFECTS.fire,
-          [
-            `${sc('🎵 Loading Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${sc('🔥 Starting Fire Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-          ],
+          makeEqualizerFrames('🎵 Loading Track...', '🔥 Starting Fire Stream...'),
         );
       } else if (data === 'menu:player' || data === 'menu:nowplaying' || data === 'menu:queue') {
         await tgCall(botToken, 'answerCallbackQuery', { callback_query_id: cq.id });
@@ -698,10 +704,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           volText,
           volumeKeyboard(),
           TELEGRAM_EFFECTS.fire,
-          [
-            `${sc('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${sc('🔥 Boosting Range 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-          ],
+          makeEqualizerFrames('🎚️ Opening Volume Control...', '🔥 Boosting Range 10% – 200%...'),
         );
       } else if (data.startsWith('vol:')) {
         const op = data.slice(4);
@@ -849,10 +852,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           WELCOME_TEXT,
           mainKeyboard(),
           TELEGRAM_EFFECTS.confetti,
-          [
-            '▁▂▃▄▅▆▇ ▰▱▱▱▱',
-            '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰',
-          ],
+          makeEqualizerFrames('⚡ Booting Music Spam Bot...', '🎧 Syncing Live Controls...'),
         );
       } else if (cmd === '/help') {
         await sendEffectMessage(
@@ -886,10 +886,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             final,
             liveKeyboard(),
             TELEGRAM_EFFECTS.heart,
-            [
-              `${sc('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-              `${sc('🔊 Syncing Live Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-            ],
+            makeEqualizerFrames('🎤 Connecting Voice Chat...', '🔊 Syncing Live Stream...'),
           );
         }
       } else if (cmd === '/search') {
@@ -917,10 +914,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
                 : `${sc('🔍 Song Search')}\n\n${getWorkerDiagnosticText('Music Search')}`,
               playGuideKeyboard(),
               TELEGRAM_EFFECTS.fire,
-              [
-                `${sc('🔍 Searching Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-                `${sc('🔥 Preparing Results...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-              ],
+              makeEqualizerFrames('🔍 Searching Track...', '🔥 Preparing Results...'),
             );
           } else {
             const buttons: InlineButton[][] = results.slice(0, 5).map((item, idx) => {
@@ -936,10 +930,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
               sc(`🔍 Select Music For: ${arg}\n\nTap any song below to play it in Live Voice Chat:`),
               { inline_keyboard: buttons },
               TELEGRAM_EFFECTS.fire,
-              [
-                `${sc('🔍 Searching Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-                `${sc('🔥 Matching Top 5 Songs...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-              ],
+              makeEqualizerFrames('🔍 Searching Track...', '🔥 Matching Top 5 Songs...'),
             );
           }
         }
@@ -968,10 +959,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             sc('🎵 Send /play <song name or URL>, /search <song name>, or upload an MP3/Audio file.'),
             playGuideKeyboard(),
             TELEGRAM_EFFECTS.fire,
-            [
-              `${sc('🎵 Opening Music Set...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-              `${sc('🔥 Ready To Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-            ],
+            makeEqualizerFrames('🎵 Opening Music Set...', '🔥 Ready To Stream...'),
           );
         } else {
           const pRes = await callAudioBackend('/player/play', {
@@ -989,10 +977,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             final,
             playerKeyboard(Boolean(pRes.ok)),
             TELEGRAM_EFFECTS.fire,
-            [
-              `${sc('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-              `${sc('🔥 Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-            ],
+            makeEqualizerFrames('🎵 Fetching Audio...', '🔥 Tuning FFmpeg Stream...'),
           );
         }
       } else if (cmd === '/volume') {
@@ -1015,10 +1000,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           sc(`🎚️ Volume Control\n\n<  ${nextVol.muted ? '🔇 Muted' : `🔊 ${nextVol.volume}%`}  >\n\nRange: 10% – 200% (FFmpeg Real-Time Gain)`),
           volumeKeyboard(),
           TELEGRAM_EFFECTS.fire,
-          [
-            `${sc('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${sc('🔥 Volume Range: 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-          ],
+          makeEqualizerFrames('🎚️ Opening Volume Control...', '🔥 Volume Range: 10% – 200%...'),
         );
       } else if (cmd === '/ping') {
         const t0 = Date.now();

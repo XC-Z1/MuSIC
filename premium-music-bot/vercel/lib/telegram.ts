@@ -124,15 +124,15 @@ export const KEYBOARDS = {
     inline_keyboard: [
       [
         { text: toSmallCaps('🎵 Play Music'), callback_data: 'menu:play', style: 'success' },
+        { text: toSmallCaps('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
       ],
       [
-        { text: toSmallCaps('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
         { text: toSmallCaps('🎤 Auto Live Join'), callback_data: 'menu:live', style: 'success' },
+        { text: toSmallCaps('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: toSmallCaps('📊 Now Playing'), callback_data: 'menu:nowplaying', style: 'primary' },
         { text: toSmallCaps('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
-        { text: toSmallCaps('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: toSmallCaps('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },

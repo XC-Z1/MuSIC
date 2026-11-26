@@ -46,7 +46,7 @@ function BotMessageBody({ message }: { message: BotMessage }) {
       } else {
         setFrameIndex(current);
       }
-    }, 240);
+    }, 160);
     return () => window.clearInterval(timer);
   }, [message.id, frames]);
 

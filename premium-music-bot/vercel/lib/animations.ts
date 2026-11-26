@@ -10,27 +10,24 @@ export const TELEGRAM_EFFECTS = {
   thumbsDown: '5104858069142078462',
 } as const;
 
+function makeEqualizerFrames(startLabel: string, endLabel: string): string[] {
+  const s1 = toSmallCaps(startLabel);
+  const s2 = toSmallCaps(endLabel);
+  return [
+    `${s1}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+    `${s1}\n▂▄▆▇▆▄▂  ▰▰▱▱▱`,
+    `${s1}\n▄▆▇▅▃▅▇  ▰▰▰▱▱`,
+    `${s2}\n▆▇▅▃▂▄▆  ▰▰▰▰▱`,
+    `${s2}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+  ];
+}
+
 export const EQUALIZER_PRESETS = {
-  welcome: [
-    '▁▂▃▄▅▆▇ ▰▱▱▱▱',
-    '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰',
-  ],
-  joinLive: [
-    `${toSmallCaps('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🔊 Syncing Live Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-  ],
-  playMusic: [
-    `${toSmallCaps('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🔥 Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-  ],
-  volume: [
-    `${toSmallCaps('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🔥 Volume Range: 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-  ],
-  searchMusic: [
-    `${toSmallCaps('🔍 Searching Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🔥 Matching Songs...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-  ],
+  welcome: makeEqualizerFrames('⚡ Booting Music Spam Bot...', '🎧 Syncing Live Controls...'),
+  joinLive: makeEqualizerFrames('🎤 Connecting Voice Chat...', '🔊 Syncing Live Stream...'),
+  playMusic: makeEqualizerFrames('🎵 Fetching Audio...', '🔥 Tuning FFmpeg Stream...'),
+  volume: makeEqualizerFrames('🎚️ Opening Volume Control...', '🔥 Volume Range: 10% – 200%...'),
+  searchMusic: makeEqualizerFrames('🔍 Searching Track...', '🔥 Matching Songs...'),
 };
 
 export async function sendEffectMessage(
@@ -40,7 +37,7 @@ export async function sendEffectMessage(
   replyMarkup?: InlineKeyboardMarkup,
   effectId?: string,
   introFrames: string[] = [],
-  delayMs = 240,
+  delayMs = 150,
 ): Promise<number | null> {
   await sendChatAction(chatId, 'typing').catch(() => undefined);
   const useEffect = chatType === 'private' && effectId ? effectId : undefined;

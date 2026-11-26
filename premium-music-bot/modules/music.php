@@ -63,6 +63,9 @@ function handlePlayCommand(PDO $pdo, array $config, int|string $chatId, int $gro
 
     sendTelegramEffectMessage($config, $chatId, 'private', $final, buildPlayerKeyboard(true), '5104841245755180586', [
         toSmallCaps('🎵 Fetching Audio...') . "\n▁▂▃▄▅▆▇  ▰▱▱▱▱",
-        toSmallCaps('🎚️ Tuning FFmpeg Stream...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
+        toSmallCaps('🎵 Fetching Audio...') . "\n▂▄▆▇▆▄▂  ▰▰▱▱▱",
+        toSmallCaps('🎵 Fetching Audio...') . "\n▄▆▇▅▃▅▇  ▰▰▰▱▱",
+        toSmallCaps('🔥 Tuning FFmpeg Stream...') . "\n▆▇▅▃▂▄▆  ▰▰▰▰▱",
+        toSmallCaps('🔥 Tuning FFmpeg Stream...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
     ]);
 }

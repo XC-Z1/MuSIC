@@ -29,15 +29,19 @@ test('/joinlive validates link and connects personal account to voice chat with 
   assert.equal(initial.botUsername, 'MUSIC SPAM BOT');
   assert.deepEqual(
     initial.messages[0].inlineKeyboard?.map((row) => row.length),
-    [1, 2, 3, 2],
+    [2, 2, 2, 2],
   );
   assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[0]?.style, 'success');
-  assert.equal(initial.messages[0].inlineKeyboard?.[1]?.[0]?.style, 'primary');
+  assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[1]?.style, 'primary');
 
   const restarted = processBotInput(initial, '/start');
   const startMsg = restarted.messages[restarted.messages.length - 1];
-  assert.equal(startMsg.animationFrames?.[0], '▁▂▃▄▅▆▇ ▰▱▱▱▱');
-  assert.equal(startMsg.animationFrames?.[1], '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰');
+  assert.equal(startMsg.animationFrames?.length, 6);
+  assert.ok(startMsg.animationFrames?.[0]?.includes('▁▂▃▄▅▆▇  ▰▱▱▱▱'));
+  assert.ok(startMsg.animationFrames?.[1]?.includes('▰▰▱▱▱'));
+  assert.ok(startMsg.animationFrames?.[2]?.includes('▰▰▰▱▱'));
+  assert.ok(startMsg.animationFrames?.[3]?.includes('▰▰▰▰▱'));
+  assert.ok(startMsg.animationFrames?.[4]?.includes('▇▆▅▄▃▂▁  ▰▰▰▰▰'));
 
   const joined = processBotInput(initial, '/joinlive https://t.me/dhaka_chill_vc/88');
   assert.equal(joined.liveSession.active, true);
@@ -45,9 +49,9 @@ test('/joinlive validates link and connects personal account to voice chat with 
   assert.equal(joined.liveSession.voiceChatId, '88');
   const lastMsg = joined.messages[joined.messages.length - 1];
   assert.equal(lastMsg.effectBadge, '❤️ Heart Effect');
-  assert.ok((lastMsg.animationFrames?.length ?? 0) === 3);
+  assert.equal(lastMsg.animationFrames?.length, 6);
   assert.ok(lastMsg.animationFrames?.[0]?.includes('▁▂▃▄▅▆▇  ▰▱▱▱▱'));
-  assert.ok(lastMsg.animationFrames?.[1]?.includes('▇▆▅▄▃▂▁  ▰▰▰▰▰'));
+  assert.ok(lastMsg.animationFrames?.[4]?.includes('▇▆▅▄▃▂▁  ▰▰▰▰▰'));
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[0]?.style, 'success');
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[1]?.style, 'danger');
 });
@@ -61,7 +65,7 @@ test('/play starts streaming and volume/mute callbacks scale up to 200% with Fir
   state = processBotInput(state, 'cmd:volume', { isCallback: true });
   const volMenuMsg = state.messages[state.messages.length - 1];
   assert.equal(volMenuMsg.effectBadge, '🔥 Fire Effect');
-  assert.ok((volMenuMsg.animationFrames?.length ?? 0) === 3);
+  assert.equal(volMenuMsg.animationFrames?.length, 6);
 
   state = processBotInput(state, 'vol:+20', { isCallback: true });
   assert.equal(state.playback.volume, 100);
