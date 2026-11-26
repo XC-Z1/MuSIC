@@ -575,6 +575,7 @@ export function createInitialBotState(): BotSystemState {
         text: welcome.text,
         inlineKeyboard: welcome.inlineKeyboard,
         timestamp: now,
+        effectBadge: '🎉 Confetti Effect',
         kind: 'welcome',
       },
     ],
@@ -656,37 +657,73 @@ export function processBotInput(
 
     if (input === 'cmd:player' || input === 'cmd:nowplaying') {
       const p = buildPlayerMessage(state);
-      state.messages.push(makeMessage('bot', p.text, { inlineKeyboard: p.inlineKeyboard, kind: 'player' }));
+      state.messages.push(
+        makeMessage('bot', p.text, {
+          inlineKeyboard: p.inlineKeyboard,
+          kind: 'player',
+          effectBadge: '🔥 Fire Effect',
+        }),
+      );
       return state;
     }
 
     if (input === 'cmd:volume') {
       const v = buildVolumeMessage(state);
-      state.messages.push(makeMessage('bot', v.text, { inlineKeyboard: v.inlineKeyboard, kind: 'volume' }));
+      state.messages.push(
+        makeMessage('bot', v.text, {
+          inlineKeyboard: v.inlineKeyboard,
+          kind: 'volume',
+          effectBadge: '👍 Thumbs Up Effect',
+        }),
+      );
       return state;
     }
 
     if (input === 'cmd:live_panel') {
       const l = buildLiveControlMessage(state);
-      state.messages.push(makeMessage('bot', l.text, { inlineKeyboard: l.inlineKeyboard, kind: 'live' }));
+      state.messages.push(
+        makeMessage('bot', l.text, {
+          inlineKeyboard: l.inlineKeyboard,
+          kind: 'live',
+          effectBadge: '❤️ Heart Effect',
+        }),
+      );
       return state;
     }
 
     if (input === 'cmd:account') {
       const a = buildAccountMessage(state);
-      state.messages.push(makeMessage('bot', a.text, { inlineKeyboard: a.inlineKeyboard, kind: 'account' }));
+      state.messages.push(
+        makeMessage('bot', a.text, {
+          inlineKeyboard: a.inlineKeyboard,
+          kind: 'account',
+          effectBadge: '❤️ Heart Effect',
+        }),
+      );
       return state;
     }
 
     if (input === 'cmd:owner') {
       const o = buildOwnerMessage(state);
-      state.messages.push(makeMessage('bot', o.text, { inlineKeyboard: o.inlineKeyboard, kind: 'owner' }));
+      state.messages.push(
+        makeMessage('bot', o.text, {
+          inlineKeyboard: o.inlineKeyboard,
+          kind: 'owner',
+          effectBadge: '🎉 Confetti Effect',
+        }),
+      );
       return state;
     }
 
     if (input === 'cmd:help') {
       const h = buildHelpMessage();
-      state.messages.push(makeMessage('bot', h.text, { inlineKeyboard: h.inlineKeyboard, kind: 'help' }));
+      state.messages.push(
+        makeMessage('bot', h.text, {
+          inlineKeyboard: h.inlineKeyboard,
+          kind: 'help',
+          effectBadge: '👍 Thumbs Up Effect',
+        }),
+      );
       return state;
     }
 
@@ -697,6 +734,7 @@ export function processBotInput(
           toSmallCaps('🎵 Send /play <song name or audio URL>, /search <song>, or tap Quick Demo Play below.'),
           {
             kind: 'info',
+            effectBadge: '🔥 Fire Effect',
             inlineKeyboard: [
               [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo', style: 'success' }],
               [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
@@ -729,6 +767,7 @@ export function processBotInput(
       state.messages.push(
         makeMessage('bot', lines.join('\n'), {
           kind: 'queue',
+          effectBadge: '👍 Thumbs Up Effect',
           inlineKeyboard: [
             [
               { text: toSmallCaps('⏭️ Skip Track'), callbackData: 'player:skip', style: 'primary' },
@@ -770,7 +809,13 @@ export function processBotInput(
         }
       }
       const v = buildVolumeMessage(state);
-      state.messages.push(makeMessage('bot', v.text, { inlineKeyboard: v.inlineKeyboard, kind: 'volume' }));
+      state.messages.push(
+        makeMessage('bot', v.text, {
+          inlineKeyboard: v.inlineKeyboard,
+          kind: 'volume',
+          effectBadge: action === 'mute' ? '👎 Alert Effect' : '👍 Thumbs Up Effect',
+        }),
+      );
       return state;
     }
 
@@ -815,7 +860,13 @@ export function processBotInput(
         state.playback.repeatMode = modes[(idx + 1) % modes.length];
       }
       const p = buildPlayerMessage(state);
-      state.messages.push(makeMessage('bot', p.text, { inlineKeyboard: p.inlineKeyboard, kind: 'player' }));
+      state.messages.push(
+        makeMessage('bot', p.text, {
+          inlineKeyboard: p.inlineKeyboard,
+          kind: 'player',
+          effectBadge: action === 'stop' ? '👎 Alert Effect' : '🔥 Fire Effect',
+        }),
+      );
       return state;
     }
 
@@ -849,7 +900,7 @@ export function processBotInput(
         makeMessage('bot', a.text, {
           inlineKeyboard: a.inlineKeyboard,
           kind: 'account',
-          effectBadge: action === 'reconnect' || action === 'connect' ? '❤️ Connected Effect' : undefined,
+          effectBadge: action === 'disconnect' ? '👎 Alert Effect' : '❤️ Heart Effect',
           animationFrames:
             action === 'reconnect' || action === 'connect'
               ? [
@@ -866,7 +917,13 @@ export function processBotInput(
     if (input === 'owner:toggle_maintenance') {
       state.maintenanceMode = !state.maintenanceMode;
       const o = buildOwnerMessage(state);
-      state.messages.push(makeMessage('bot', o.text, { inlineKeyboard: o.inlineKeyboard, kind: 'owner' }));
+      state.messages.push(
+        makeMessage('bot', o.text, {
+          inlineKeyboard: o.inlineKeyboard,
+          kind: 'owner',
+          effectBadge: state.maintenanceMode ? '👎 Alert Effect' : '🎉 Confetti Effect',
+        }),
+      );
       return state;
     }
 
@@ -916,7 +973,13 @@ export function processBotInput(
 
     case '/help': {
       const h = buildHelpMessage();
-      state.messages.push(makeMessage('bot', h.text, { inlineKeyboard: h.inlineKeyboard, kind: 'help' }));
+      state.messages.push(
+        makeMessage('bot', h.text, {
+          inlineKeyboard: h.inlineKeyboard,
+          kind: 'help',
+          effectBadge: '👍 Thumbs Up Effect',
+        }),
+      );
       return state;
     }
 
@@ -925,18 +988,20 @@ export function processBotInput(
         state.messages.push(
           makeMessage('bot', '❌ Invalid Live Link\nUsage: /joinlive https://t.me/group_name/123', {
             kind: 'error',
+            effectBadge: '👎 Alert Effect',
           }),
         );
         return state;
       }
       if (!state.stats.backendOnline) {
-        state.messages.push(makeMessage('bot', '❌ Streaming Backend Offline', { kind: 'error' }));
+        state.messages.push(makeMessage('bot', '❌ Streaming Backend Offline', { kind: 'error', effectBadge: '👎 Alert Effect' }));
         return state;
       }
       if (state.account.status !== 'connected') {
         state.messages.push(
           makeMessage('bot', '❌ Account Has No Access\nPersonal account is disconnected. Run /connect first.', {
             kind: 'error',
+            effectBadge: '👎 Alert Effect',
           }),
         );
         return state;
@@ -947,6 +1012,7 @@ export function processBotInput(
         state.messages.push(
           makeMessage('bot', `❌ Invalid Live Link\n${parsed.reason ?? 'Unrecognized Telegram link.'}`, {
             kind: 'error',
+            effectBadge: '👎 Alert Effect',
           }),
         );
         return state;
@@ -965,7 +1031,7 @@ export function processBotInput(
         makeMessage('bot', liveMsg.text, {
           inlineKeyboard: liveMsg.inlineKeyboard,
           kind: 'live',
-          effectBadge: '🤩 Live Effect',
+          effectBadge: '❤️ Heart Effect',
           animationFrames: [
             `${toSmallCaps('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
             `${toSmallCaps(`🔊 Joining ${parsed.chatIdentifier}...`)}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
@@ -986,6 +1052,7 @@ export function processBotInput(
       state.messages.push(
         makeMessage('bot', toSmallCaps('🚪 Left the active Voice Chat cleanly. Session resources released.'), {
           kind: 'live',
+          effectBadge: '👎 Alert Effect',
           inlineKeyboard: [
             [
               { text: toSmallCaps('🎤 Rejoin Live'), callbackData: 'live:join_demo', style: 'success' },
@@ -999,7 +1066,13 @@ export function processBotInput(
 
     case '/live': {
       const l = buildLiveControlMessage(state);
-      state.messages.push(makeMessage('bot', l.text, { inlineKeyboard: l.inlineKeyboard, kind: 'live' }));
+      state.messages.push(
+        makeMessage('bot', l.text, {
+          inlineKeyboard: l.inlineKeyboard,
+          kind: 'live',
+          effectBadge: '🔥 Fire Effect',
+        }),
+      );
       return state;
     }
 
@@ -1009,7 +1082,7 @@ export function processBotInput(
         makeMessage(
           'bot',
           `🎤 Auto Live Join is now ${state.liveSession.autoJoinEnabled ? 'ENABLED' : 'DISABLED'}.`,
-          { kind: 'live' },
+          { kind: 'live', effectBadge: state.liveSession.autoJoinEnabled ? '❤️ Heart Effect' : '👎 Alert Effect' },
         ),
       );
       return state;
@@ -1113,7 +1186,13 @@ export function processBotInput(
       state.playback.volume = clampVolume(parsedVol);
       state.playback.previousVolume = state.playback.volume;
       const v = buildVolumeMessage(state);
-      state.messages.push(makeMessage('bot', v.text, { inlineKeyboard: v.inlineKeyboard, kind: 'volume' }));
+      state.messages.push(
+        makeMessage('bot', v.text, {
+          inlineKeyboard: v.inlineKeyboard,
+          kind: 'volume',
+          effectBadge: '👍 Thumbs Up Effect',
+        }),
+      );
       return state;
     }
 
@@ -1140,7 +1219,7 @@ export function processBotInput(
         makeMessage(
           'bot',
           `⚡ Pong! Webhook: 14ms · Audio Worker: ${state.stats.backendLatencyMs}ms · DB: 6ms`,
-          { kind: 'info' },
+          { kind: 'info', effectBadge: '🎉 Confetti Effect' },
         ),
       );
       return state;
@@ -1162,14 +1241,14 @@ export function processBotInput(
 
     case '/broadcast': {
       if (!arg) {
-        state.messages.push(makeMessage('bot', '📢 Usage: /broadcast <announcement message>', { kind: 'error' }));
+        state.messages.push(makeMessage('bot', '📢 Usage: /broadcast <announcement message>', { kind: 'error', effectBadge: '👎 Alert Effect' }));
         return state;
       }
       state.messages.push(
         makeMessage(
           'bot',
           `📢 Broadcast dispatched cleanly to ${state.stats.totalUsers} users and ${state.stats.totalGroups} groups:\n"${arg}"`,
-          { kind: 'owner' },
+          { kind: 'owner', effectBadge: '🎉 Confetti Effect' },
         ),
       );
       return state;
@@ -1179,7 +1258,7 @@ export function processBotInput(
       const list = state.users
         .map((u) => `• ${u.name} (${u.username}) · ${u.role.toUpperCase()} · ${u.requestsCount} plays`)
         .join('\n');
-      state.messages.push(makeMessage('bot', `👥 𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐔𝐒𝐄𝐑𝐒\n\n${list}`, { kind: 'owner' }));
+      state.messages.push(makeMessage('bot', `👥 𝐑𝐄𝐆𝐈𝐒𝐓𝐄𝐑𝐄𝐃 𝐔𝐒𝐄𝐑𝐒\n\n${list}`, { kind: 'owner', effectBadge: '👍 Thumbs Up Effect' }));
       return state;
     }
 
@@ -1187,7 +1266,7 @@ export function processBotInput(
       const list = state.groups
         .map((g) => `• ${g.title} (${g.identifier}) · Vol ${g.volume}% · AutoJoin ${g.autoJoin ? 'ON' : 'OFF'}`)
         .join('\n');
-      state.messages.push(makeMessage('bot', `💬 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒\n\n${list}`, { kind: 'owner' }));
+      state.messages.push(makeMessage('bot', `💬 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃 𝐆𝐑𝐎𝐔𝐏𝐒\n\n${list}`, { kind: 'owner', effectBadge: '👍 Thumbs Up Effect' }));
       return state;
     }
 
@@ -1199,6 +1278,7 @@ export function processBotInput(
       state.messages.push(
         makeMessage('bot', `Unrecognized command "${cmd}". Send /help to view all supported commands.`, {
           kind: 'error',
+          effectBadge: '👎 Alert Effect',
         }),
       );
       return state;

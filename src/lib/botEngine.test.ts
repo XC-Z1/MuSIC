@@ -35,7 +35,7 @@ test('/joinlive validates link and connects personal account to voice chat with 
   assert.equal(joined.liveSession.groupIdentifier, '@dhaka_chill_vc');
   assert.equal(joined.liveSession.voiceChatId, '88');
   const lastMsg = joined.messages[joined.messages.length - 1];
-  assert.equal(lastMsg.effectBadge, '🤩 Live Effect');
+  assert.equal(lastMsg.effectBadge, '❤️ Heart Effect');
   assert.ok((lastMsg.animationFrames?.length ?? 0) === 3);
   assert.ok(lastMsg.animationFrames?.[0]?.includes('▁▂▃▄▅▆▇  ▰▱▱▱▱'));
   assert.ok(lastMsg.animationFrames?.[1]?.includes('▇▆▅▄▃▂▁  ▰▰▰▰▰'));

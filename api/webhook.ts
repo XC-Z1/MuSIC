@@ -24,9 +24,9 @@ interface InlineMarkup {
 const TELEGRAM_EFFECTS = {
   confetti: '5046509860389126442',
   fire: '5104841245755180586',
-  star: '5161554034041029689',
+  heart: '5159385139981059251',
   thumbsUp: '5107584321108051014',
-  heart: '5044134455711629726',
+  thumbsDown: '5104858069142078462',
 } as const;
 
 interface TelegramUpdate {
@@ -42,7 +42,7 @@ interface TelegramUpdate {
   callback_query?: {
     id: string;
     from: { id: number; username?: string; first_name?: string };
-    message?: { message_id: number; chat: { id: number } };
+    message?: { message_id: number; chat: { id: number; type?: string } };
     data?: string;
   };
 }
@@ -584,12 +584,18 @@ export default async function handler(req: VercelReq, res: VercelRes) {
         const text = pRes.ok
           ? sc(`🎧 Now Playing\n\n🎵 Song: ${String(pRes.data?.title || source)}\n▶️ Status: Playing`)
           : sc(`❌ Cannot Play Track\n\n${pRes.error}`);
-        await tgCall(botToken, 'editMessageText', {
-          chat_id: chatId,
-          message_id: msgId,
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          cq.message?.chat.type || 'private',
           text,
-          reply_markup: playerKeyboard(Boolean(pRes.ok)),
-        });
+          playerKeyboard(Boolean(pRes.ok)),
+          TELEGRAM_EFFECTS.fire,
+          [
+            `${sc('🎵 Loading Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${sc('🔥 Starting Fire Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+          ],
+        );
       } else if (data === 'menu:player' || data === 'menu:nowplaying' || data === 'menu:queue') {
         await tgCall(botToken, 'answerCallbackQuery', { callback_query_id: cq.id });
         const st = await callAudioBackend(`/player/status?chat_id=${chatId}`, {}, 'GET');
@@ -776,18 +782,25 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           ],
         );
       } else if (cmd === '/help') {
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: HELP_TEXT,
-          reply_markup: mainKeyboard(),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          HELP_TEXT,
+          mainKeyboard(),
+          TELEGRAM_EFFECTS.thumbsUp,
+        );
       } else if (cmd === '/joinlive' || rawText.includes('t.me/') || rawText.includes('telegram.me/')) {
         const link = cmd === '/joinlive' ? arg : rawText;
         if (!link) {
-          await tgCall(botToken, 'sendMessage', {
-            chat_id: chatId,
-            text: sc('❌ Invalid Live Link\nUsage: /joinlive https://t.me/example_group/123'),
-          });
+          await sendEffectMessage(
+            botToken,
+            chatId,
+            chatType,
+            sc('❌ Invalid Live Link\nUsage: /joinlive https://t.me/example_group/123'),
+            liveKeyboard(),
+            TELEGRAM_EFFECTS.thumbsDown,
+          );
         } else {
           const jRes = await callAudioBackend('/live/join', { link, chat_id: chatId });
           const final = jRes.ok
@@ -799,7 +812,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             chatType,
             final,
             liveKeyboard(),
-            jRes.ok ? TELEGRAM_EFFECTS.star : undefined,
+            TELEGRAM_EFFECTS.heart,
             [
               `${sc('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
               `${sc('🔊 Syncing Live Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
@@ -808,24 +821,30 @@ export default async function handler(req: VercelReq, res: VercelRes) {
         }
       } else if (cmd === '/search') {
         if (!arg) {
-          await tgCall(botToken, 'sendMessage', {
-            chat_id: chatId,
-            text: sc('🔍 Usage: /search <song name>\nExample: /search Kesariya Arijit Singh'),
-            reply_markup: playGuideKeyboard(),
-          });
+          await sendEffectMessage(
+            botToken,
+            chatId,
+            chatType,
+            sc('🔍 Usage: /search <song name>\nExample: /search Kesariya Arijit Singh'),
+            playGuideKeyboard(),
+            TELEGRAM_EFFECTS.thumbsUp,
+          );
         } else {
           const sRes = await callAudioBackend('/player/search', { query: arg, limit: 5 });
           const results = Array.isArray(sRes.data?.results)
             ? (sRes.data.results as Array<{ title?: string; artist?: string; duration?: number; id?: string; url?: string }>)
             : [];
           if (!sRes.ok || results.length === 0) {
-            await tgCall(botToken, 'sendMessage', {
-              chat_id: chatId,
-              text: sRes.configured
+            await sendEffectMessage(
+              botToken,
+              chatId,
+              chatType,
+              sRes.configured
                 ? sc(`❌ No tracks found for "${arg}". Try /play ${arg} or send a direct URL.`)
                 : `${sc('🔍 Song Search')}\n\n${getWorkerDiagnosticText('Music Search')}`,
-              reply_markup: playGuideKeyboard(),
-            });
+              playGuideKeyboard(),
+              sRes.configured ? TELEGRAM_EFFECTS.thumbsDown : TELEGRAM_EFFECTS.thumbsUp,
+            );
           } else {
             const buttons: InlineButton[][] = results.slice(0, 5).map((item, idx) => {
               const title = String(item.title || `Track ${idx + 1}`).slice(0, 42);
@@ -854,11 +873,14 @@ export default async function handler(req: VercelReq, res: VercelRes) {
                 ? arg
                 : rawText;
         if (!source) {
-          await tgCall(botToken, 'sendMessage', {
-            chat_id: chatId,
-            text: sc('🎵 Send /play <song name or URL>, /search <song name>, or upload an MP3/Audio file.'),
-            reply_markup: playGuideKeyboard(),
-          });
+          await sendEffectMessage(
+            botToken,
+            chatId,
+            chatType,
+            sc('🎵 Send /play <song name or URL>, /search <song name>, or upload an MP3/Audio file.'),
+            playGuideKeyboard(),
+            TELEGRAM_EFFECTS.thumbsUp,
+          );
         } else {
           const pRes = await callAudioBackend('/player/play', {
             chat_id: chatId,
@@ -874,7 +896,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             chatType,
             final,
             playerKeyboard(Boolean(pRes.ok)),
-            pRes.ok ? TELEGRAM_EFFECTS.fire : undefined,
+            TELEGRAM_EFFECTS.fire,
             [
               `${sc('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
               `${sc('🎚️ Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
@@ -887,53 +909,82 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           ? await callAudioBackend('/volume/set', { chat_id: chatId, volume: Math.min(200, Math.max(10, volNum)) })
           : await callAudioBackend(`/volume/status?chat_id=${chatId}`, {}, 'GET');
         const vol = vRes.ok && vRes.data ? Number(vRes.data.volume ?? 80) : (Number.isFinite(volNum) ? volNum : 80);
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: sc(`🎚️ Volume Control\n\n<  🔊 ${vol}%  >`),
-          reply_markup: volumeKeyboard(),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          sc(`🎚️ Volume Control\n\n<  🔊 ${vol}%  >`),
+          volumeKeyboard(),
+          TELEGRAM_EFFECTS.thumbsUp,
+        );
       } else if (cmd === '/ping') {
         const t0 = Date.now();
         const h = await callAudioBackend('/health', {}, 'GET');
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: sc(`⚡ Pong! Vercel Webhook Active (${Date.now() - t0}ms)\nAudio Worker: ${h.ok ? 'Online' : 'Not Connected'}`),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          sc(`⚡ Pong! Vercel Webhook Active (${Date.now() - t0}ms)\nAudio Worker: ${h.ok ? 'Online' : 'Not Connected'}`),
+          mainKeyboard(),
+          TELEGRAM_EFFECTS.confetti,
+        );
       } else if (['/pause', '/resume', '/skip', '/stop'].includes(cmd)) {
         const action = cmd.slice(1);
         const r = await callAudioBackend(`/player/${action}`, { chat_id: chatId });
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: sc(r.ok ? `🎧 ${action.toUpperCase()} executed.` : `❌ ${r.error}`),
-          reply_markup: playerKeyboard(action === 'resume'),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          sc(r.ok ? `🎧 ${action.toUpperCase()} executed.` : `❌ ${r.error}`),
+          playerKeyboard(action === 'resume'),
+          action === 'stop' ? TELEGRAM_EFFECTS.thumbsDown : TELEGRAM_EFFECTS.fire,
+        );
       } else if (cmd === '/leavelive') {
         const r = await callAudioBackend('/live/leave', { chat_id: chatId });
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: sc(r.ok ? '🚪 Left Voice Chat.' : `❌ ${r.error}`),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          sc(r.ok ? '🚪 Left Voice Chat.' : `❌ ${r.error}`),
+          liveKeyboard(),
+          TELEGRAM_EFFECTS.thumbsDown,
+        );
       } else if (cmd === '/live') {
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: sc('🎤 Live Control Panel'),
-          reply_markup: liveKeyboard(),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          sc('🎤 Live Control Panel'),
+          liveKeyboard(),
+          TELEGRAM_EFFECTS.fire,
+        );
       } else if (cmd === '/account' || cmd === '/connect' || cmd === '/disconnect' || cmd === '/reconnect' || cmd === '/owner' || cmd === '/stats' || cmd === '/status') {
         const isAcc = ['/account', '/connect', '/disconnect', '/reconnect'].includes(cmd);
         const endpoint = cmd === '/account' ? '/account/status' : isAcc ? `/account/${cmd.slice(1)}` : '/health';
         const r = await callAudioBackend(endpoint, {}, cmd === '/connect' || cmd === '/disconnect' || cmd === '/reconnect' ? 'POST' : 'GET');
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: r.ok ? `${sc('✅ Status:')}\n${JSON.stringify(r.data, null, 2)}` : getWorkerDiagnosticText(cmd),
-          reply_markup: isAcc ? accountKeyboard() : mainKeyboard(),
-        });
+        const effect =
+          cmd === '/disconnect'
+            ? TELEGRAM_EFFECTS.thumbsDown
+            : isAcc
+              ? TELEGRAM_EFFECTS.heart
+              : TELEGRAM_EFFECTS.confetti;
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          r.ok ? `${sc('✅ Status:')}\n${JSON.stringify(r.data, null, 2)}` : getWorkerDiagnosticText(cmd),
+          isAcc ? accountKeyboard() : mainKeyboard(),
+          effect,
+        );
       } else {
-        await tgCall(botToken, 'sendMessage', {
-          chat_id: chatId,
-          text: sc('Send /start for the control panel, /search <song> to pick a song, or paste a https://t.me/... Voice Chat link.'),
-          reply_markup: mainKeyboard(),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          chatType,
+          sc('Send /start for the control panel, /search <song> to pick a song, or paste a https://t.me/... Voice Chat link.'),
+          mainKeyboard(),
+          TELEGRAM_EFFECTS.thumbsUp,
+        );
       }
     }
 

@@ -16,13 +16,13 @@ function handleStartCommand(array $config, int|string $chatId, ?int $editMessage
     ]);
 }
 
-function handleHelpCommand(array $config, int|string $chatId, ?int $editMessageId = null): void
+function handleHelpCommand(array $config, int|string $chatId, ?int $editMessageId = null, string $chatType = 'private'): void
 {
     $text = getHelpMessageText();
     $markup = buildMainWelcomeKeyboard();
     if ($editMessageId !== null) {
         editTelegramMessage($config, $chatId, $editMessageId, $text, $markup);
     } else {
-        sendTelegramMessage($config, $chatId, $text, $markup);
+        sendTelegramEffectMessage($config, $chatId, $chatType, $text, $markup, '5107584321108051014');
     }
 }

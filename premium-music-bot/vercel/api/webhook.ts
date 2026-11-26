@@ -24,7 +24,7 @@ interface TelegramUpdate {
   callback_query?: {
     id: string;
     from: { id: number; username?: string; first_name?: string };
-    message?: { message_id: number; chat: { id: number } };
+    message?: { message_id: number; chat: { id: number; type?: string } };
     data?: string;
   };
 }
@@ -212,9 +212,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           requested_by: cq.from.username || cq.from.first_name || 'User',
         });
         const text = pRes.ok
-          ? `🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆\n\n🎵 Song: ${pRes.data?.title || source}\n▶️ Status: Playing`
+          ? toSmallCaps(`🎧 Now Playing\n\n🎵 Song: ${pRes.data?.title || source}\n▶️ Status: Playing`)
           : `❌ ${pRes.error}`;
-        await editMessageText(chatId, msgId, text, KEYBOARDS.player(pRes.ok));
+        await sendEffectMessage(
+          chatId,
+          cq.message?.chat.type || 'private',
+          text,
+          KEYBOARDS.player(pRes.ok),
+          TELEGRAM_EFFECTS.fire,
+          EQUALIZER_PRESETS.playMusic,
+        );
       } else if (data === 'menu:player' || data === 'menu:nowplaying' || data === 'menu:queue') {
         await answerCallbackQuery(cq.id);
         const st = await callAudioBackend<{
@@ -369,13 +376,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             chatType,
             finalText,
             KEYBOARDS.live(),
-            joinRes.ok ? TELEGRAM_EFFECTS.star : undefined,
+            TELEGRAM_EFFECTS.heart,
             EQUALIZER_PRESETS.joinLive,
           );
         }
       } else if (cmd === '/search') {
         if (!arg) {
-          await sendMessage(chatId, toSmallCaps('🔍 Usage: /search <song name>'));
+          await sendEffectMessage(chatId, chatType, toSmallCaps('🔍 Usage: /search <song name>'), KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.thumbsUp);
         } else {
           const sRes = await callAudioBackend<{ results?: Array<{ id?: string; title?: string; url?: string }> }>('/player/search', {
             query: arg,
@@ -383,7 +390,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           const results = sRes.data?.results || [];
           if (!sRes.ok || results.length === 0) {
-            await sendMessage(chatId, hasWorker ? toSmallCaps(`❌ No tracks found for "${arg}".`) : getWorkerDiagnosticText('Music Search'));
+            await sendEffectMessage(
+              chatId,
+              chatType,
+              hasWorker ? toSmallCaps(`❌ No tracks found for "${arg}".`) : getWorkerDiagnosticText('Music Search'),
+              KEYBOARDS.mainMenu(),
+              hasWorker ? TELEGRAM_EFFECTS.thumbsDown : TELEGRAM_EFFECTS.thumbsUp,
+            );
           } else {
             const markup: InlineKeyboardMarkup = {
               inline_keyboard: [
@@ -417,7 +430,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 ? arg
                 : text;
         if (!query) {
-          await sendMessage(chatId, toSmallCaps('❌ Provide a song name, URL, or audio file: /play <song>'));
+          await sendEffectMessage(chatId, chatType, toSmallCaps('❌ Provide a song name, URL, or audio file: /play <song>'), KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.thumbsUp);
         } else {
           const pRes = await callAudioBackend<{ title?: string; artist?: string }>('/player/play', {
             chat_id: chatId,
@@ -432,39 +445,51 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             chatType,
             finalText,
             KEYBOARDS.player(pRes.ok),
-            pRes.ok ? TELEGRAM_EFFECTS.fire : undefined,
+            TELEGRAM_EFFECTS.fire,
             EQUALIZER_PRESETS.playMusic,
           );
         }
       } else if (cmd === '/volume') {
         const volNum = Number(arg);
         if (!Number.isFinite(volNum) || volNum < 10 || volNum > 200) {
-          await sendMessage(chatId, '🎚️ Usage: /volume <10-200>', KEYBOARDS.volume());
+          await sendEffectMessage(chatId, chatType, toSmallCaps('🎚️ Usage: /volume <10-200>'), KEYBOARDS.volume(), TELEGRAM_EFFECTS.thumbsUp);
         } else {
           const vRes = await callAudioBackend<{ volume: number }>('/volume/set', { chat_id: chatId, volume: volNum });
-          await sendMessage(chatId, vRes.ok ? `🎚️ Volume set to ${vRes.data?.volume}%` : `❌ ${vRes.error}`, KEYBOARDS.volume());
+          await sendEffectMessage(chatId, chatType, vRes.ok ? toSmallCaps(`🎚️ Volume set to ${vRes.data?.volume}%`) : `❌ ${vRes.error}`, KEYBOARDS.volume(), TELEGRAM_EFFECTS.thumbsUp);
         }
       } else if (['/pause', '/resume', '/skip', '/stop'].includes(cmd)) {
         const action = cmd.slice(1);
         const r = await callAudioBackend(`/player/${action}`, { chat_id: chatId });
-        await sendMessage(chatId, r.ok ? `🎧 ${action.toUpperCase()} executed.` : `❌ ${r.error}`, KEYBOARDS.player(action === 'resume'));
+        await sendEffectMessage(
+          chatId,
+          chatType,
+          r.ok ? toSmallCaps(`🎧 ${action.toUpperCase()} executed.`) : `❌ ${r.error}`,
+          KEYBOARDS.player(action === 'resume'),
+          action === 'stop' ? TELEGRAM_EFFECTS.thumbsDown : TELEGRAM_EFFECTS.fire,
+        );
       } else if (cmd === '/leavelive') {
         const r = await callAudioBackend('/live/leave', { chat_id: chatId });
-        await sendMessage(chatId, r.ok ? '🚪 Left Voice Chat.' : `❌ ${r.error}`);
+        await sendEffectMessage(chatId, chatType, r.ok ? toSmallCaps('🚪 Left Voice Chat.') : `❌ ${r.error}`, KEYBOARDS.live(), TELEGRAM_EFFECTS.thumbsDown);
       } else if (cmd === '/ping') {
         const t0 = Date.now();
         const r = await callAudioBackend('/health', {}, 'GET');
-        await sendMessage(chatId, `⚡ Pong! Vercel Webhook + Backend: ${Date.now() - t0}ms (${r.ok ? 'Online' : 'Offline'})`);
+        await sendEffectMessage(chatId, chatType, toSmallCaps(`⚡ Pong! Vercel Webhook + Backend: ${Date.now() - t0}ms (${r.ok ? 'Online' : 'Offline'})`), KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.confetti);
       } else if (cmd === '/account' || cmd === '/connect' || cmd === '/disconnect' || cmd === '/reconnect') {
         if (!isOwner(msg.from?.id)) {
-          await sendMessage(chatId, '⛔ Personal account controls are restricted to the Bot Owner.');
+          await sendEffectMessage(chatId, chatType, toSmallCaps('⛔ Personal account controls are restricted to the Bot Owner.'), KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.thumbsDown);
         } else {
           const op = cmd === '/account' ? 'status' : cmd.slice(1);
           const r = await callAudioBackend(`/account/${op}`, {}, op === 'status' ? 'GET' : 'POST');
-          await sendMessage(chatId, r.ok ? `👤 Account ${op}: ${JSON.stringify(r.data)}` : getWorkerDiagnosticText(cmd), KEYBOARDS.account());
+          await sendEffectMessage(
+            chatId,
+            chatType,
+            r.ok ? toSmallCaps(`👤 Account ${op}: ${JSON.stringify(r.data)}`) : getWorkerDiagnosticText(cmd),
+            KEYBOARDS.account(),
+            cmd === '/disconnect' ? TELEGRAM_EFFECTS.thumbsDown : TELEGRAM_EFFECTS.heart,
+          );
         }
       } else {
-        await sendMessage(chatId, 'Send /start to open the control menu, /search <song> to pick music, or paste a https://t.me/... Voice Chat link.', KEYBOARDS.mainMenu());
+        await sendEffectMessage(chatId, chatType, toSmallCaps('Send /start to open the control menu, /search <song> to pick music, or paste a https://t.me/... Voice Chat link.'), KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.thumbsUp);
       }
     }
 
