@@ -1,25 +1,27 @@
 <?php
 declare(strict_types=1);
 
+require_once __DIR__ . '/messages.php';
+
 function buildMainWelcomeKeyboard(): array
 {
     return [
         'inline_keyboard' => [
             [
-                ['text' => '🎵 Play Music', 'callback_data' => 'menu:play'],
-                ['text' => '🎧 Music Player', 'callback_data' => 'menu:player'],
+                ['text' => toSmallCaps('🎵 Play Music'), 'callback_data' => 'menu:play'],
+                ['text' => toSmallCaps('🎧 Music Player'), 'callback_data' => 'menu:player'],
             ],
             [
-                ['text' => '🎤 Auto Live Join', 'callback_data' => 'menu:live'],
-                ['text' => '👤 Account Control', 'callback_data' => 'menu:account'],
+                ['text' => toSmallCaps('🎤 Auto Live Join'), 'callback_data' => 'menu:live'],
+                ['text' => toSmallCaps('👤 Account Control'), 'callback_data' => 'menu:account'],
             ],
             [
-                ['text' => '📊 Now Playing', 'callback_data' => 'menu:nowplaying'],
-                ['text' => '🎚️ Volume Control', 'callback_data' => 'menu:volume'],
+                ['text' => toSmallCaps('📊 Now Playing'), 'callback_data' => 'menu:nowplaying'],
+                ['text' => toSmallCaps('🎚️ Volume Control'), 'callback_data' => 'menu:volume'],
             ],
             [
-                ['text' => '📚 Help & Commands', 'callback_data' => 'menu:help'],
-                ['text' => '👑 Bot Owner', 'callback_data' => 'menu:owner'],
+                ['text' => toSmallCaps('📚 Help & Commands'), 'callback_data' => 'menu:help'],
+                ['text' => toSmallCaps('👑 Bot Owner'), 'callback_data' => 'menu:owner'],
             ],
         ],
     ];
@@ -30,20 +32,20 @@ function buildPlayerKeyboard(bool $isPlaying = true): array
     return [
         'inline_keyboard' => [
             [
-                ['text' => '⏮️ Prev', 'callback_data' => 'player:prev'],
-                ['text' => $isPlaying ? '⏸️ Pause' : '▶️ Resume', 'callback_data' => $isPlaying ? 'player:pause' : 'player:resume'],
-                ['text' => '⏭️ Skip', 'callback_data' => 'player:skip'],
-                ['text' => '⏹️ Stop', 'callback_data' => 'player:stop'],
+                ['text' => toSmallCaps('⏮️ Prev'), 'callback_data' => 'player:prev'],
+                ['text' => toSmallCaps($isPlaying ? '⏸️ Pause' : '▶️ Resume'), 'callback_data' => $isPlaying ? 'player:pause' : 'player:resume'],
+                ['text' => toSmallCaps('⏭️ Skip'), 'callback_data' => 'player:skip'],
+                ['text' => toSmallCaps('⏹️ Stop'), 'callback_data' => 'player:stop'],
             ],
             [
-                ['text' => '🔁 Repeat', 'callback_data' => 'player:repeat'],
-                ['text' => '📚 Queue', 'callback_data' => 'menu:queue'],
+                ['text' => toSmallCaps('🔁 Repeat'), 'callback_data' => 'player:repeat'],
+                ['text' => toSmallCaps('📚 Queue'), 'callback_data' => 'menu:queue'],
             ],
             [
-                ['text' => '🎚️ Volume Control', 'callback_data' => 'menu:volume'],
-                ['text' => '🎤 Live Control', 'callback_data' => 'menu:live'],
+                ['text' => toSmallCaps('🎚️ Volume Control'), 'callback_data' => 'menu:volume'],
+                ['text' => toSmallCaps('🎤 Live Control'), 'callback_data' => 'menu:live'],
             ],
-            [['text' => '🔙 Main Menu', 'callback_data' => 'menu:start']],
+            [['text' => toSmallCaps('🔙 Main Menu'), 'callback_data' => 'menu:start']],
         ],
     ];
 }
@@ -61,10 +63,10 @@ function buildVolumeKeyboard(): array
                 ['text' => '➕ 20%', 'callback_data' => 'vol:+20'],
             ],
             [
-                ['text' => '🔇 MUTE', 'callback_data' => 'vol:mute'],
-                ['text' => '🔊 UNMUTE', 'callback_data' => 'vol:unmute'],
+                ['text' => toSmallCaps('🔇 Mute'), 'callback_data' => 'vol:mute'],
+                ['text' => toSmallCaps('🔊 Unmute'), 'callback_data' => 'vol:unmute'],
             ],
-            [['text' => '🔙 BACK TO PLAYER', 'callback_data' => 'menu:player']],
+            [['text' => toSmallCaps('🔙 Back To Player'), 'callback_data' => 'menu:player']],
         ],
     ];
 }
@@ -74,32 +76,32 @@ function buildLiveControlKeyboard(): array
     return [
         'inline_keyboard' => [
             [
-                ['text' => '🎤 Join Live', 'callback_data' => 'live:join_prompt'],
-                ['text' => '🚪 Leave Live', 'callback_data' => 'live:leave'],
+                ['text' => toSmallCaps('🎤 Join Live'), 'callback_data' => 'live:join_prompt'],
+                ['text' => toSmallCaps('🚪 Leave Live'), 'callback_data' => 'live:leave'],
             ],
             [
-                ['text' => '▶️ Play Music', 'callback_data' => 'menu:play'],
-                ['text' => '⏸️ Pause Music', 'callback_data' => 'player:pause'],
+                ['text' => toSmallCaps('▶️ Play Music'), 'callback_data' => 'menu:play'],
+                ['text' => toSmallCaps('⏸️ Pause Music'), 'callback_data' => 'player:pause'],
             ],
             [
-                ['text' => '▶️ Resume Music', 'callback_data' => 'player:resume'],
-                ['text' => '⏭️ Skip Music', 'callback_data' => 'player:skip'],
+                ['text' => toSmallCaps('▶️ Resume Music'), 'callback_data' => 'player:resume'],
+                ['text' => toSmallCaps('⏭️ Skip Music'), 'callback_data' => 'player:skip'],
             ],
             [
-                ['text' => '⏹️ Stop Music', 'callback_data' => 'player:stop'],
-                ['text' => '📊 Live Status', 'callback_data' => 'menu:live'],
+                ['text' => toSmallCaps('⏹️ Stop Music'), 'callback_data' => 'player:stop'],
+                ['text' => toSmallCaps('📊 Live Status'), 'callback_data' => 'menu:live'],
             ],
             [
-                ['text' => '🔊 Volume Up', 'callback_data' => 'vol:+10'],
-                ['text' => '🔉 Volume Down', 'callback_data' => 'vol:-10'],
+                ['text' => toSmallCaps('🔊 Volume Up'), 'callback_data' => 'vol:+10'],
+                ['text' => toSmallCaps('🔉 Volume Down'), 'callback_data' => 'vol:-10'],
             ],
             [
-                ['text' => '🔇 Mute', 'callback_data' => 'vol:mute'],
-                ['text' => '🔊 Unmute', 'callback_data' => 'vol:unmute'],
+                ['text' => toSmallCaps('🔇 Mute'), 'callback_data' => 'vol:mute'],
+                ['text' => toSmallCaps('🔊 Unmute'), 'callback_data' => 'vol:unmute'],
             ],
             [
-                ['text' => '🔄 Reconnect', 'callback_data' => 'account:reconnect'],
-                ['text' => '🔙 Main Menu', 'callback_data' => 'menu:start'],
+                ['text' => toSmallCaps('🔄 Reconnect'), 'callback_data' => 'account:reconnect'],
+                ['text' => toSmallCaps('🔙 Main Menu'), 'callback_data' => 'menu:start'],
             ],
         ],
     ];
@@ -110,14 +112,14 @@ function buildAccountControlKeyboard(): array
     return [
         'inline_keyboard' => [
             [
-                ['text' => '🔗 Connect', 'callback_data' => 'account:connect'],
-                ['text' => '🔌 Disconnect', 'callback_data' => 'account:disconnect'],
+                ['text' => toSmallCaps('🔗 Connect'), 'callback_data' => 'account:connect'],
+                ['text' => toSmallCaps('🔌 Disconnect'), 'callback_data' => 'account:disconnect'],
             ],
             [
-                ['text' => '🔄 Reconnect', 'callback_data' => 'account:reconnect'],
-                ['text' => '🎤 Live Panel', 'callback_data' => 'menu:live'],
+                ['text' => toSmallCaps('🔄 Reconnect'), 'callback_data' => 'account:reconnect'],
+                ['text' => toSmallCaps('🎤 Live Panel'), 'callback_data' => 'menu:live'],
             ],
-            [['text' => '🔙 Main Menu', 'callback_data' => 'menu:start']],
+            [['text' => toSmallCaps('🔙 Main Menu'), 'callback_data' => 'menu:start']],
         ],
     ];
 }

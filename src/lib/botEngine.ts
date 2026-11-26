@@ -175,35 +175,64 @@ export function renderProgressBar(positionSec: number, durationSec: number, widt
   return bar;
 }
 
+const SMALL_CAPS_MAP: Record<string, string> = {
+  a: 'ᴀ', b: 'ʙ', c: 'ᴄ', d: 'ᴅ', e: 'ᴇ', f: 'ғ', g: 'ɢ', h: 'ʜ', i: 'ɪ',
+  j: 'ᴊ', k: 'ᴋ', l: 'ʟ', m: 'ᴍ', n: 'ɴ', o: 'ᴏ', p: 'ᴘ', q: 'ǫ', r: 'ʀ',
+  s: 's', t: 'ᴛ', u: 'ᴜ', v: 'ᴠ', w: 'ᴡ', x: 'x', y: 'ʏ', z: 'ᴢ',
+};
+
+export function toSmallCaps(input: string): string {
+  return input
+    .split(/(\s+)/)
+    .map((token) => {
+      if (!token || /^\s+$/.test(token)) return token;
+      if (
+        token.startsWith('/') ||
+        token.startsWith('@') ||
+        token.startsWith('http://') ||
+        token.startsWith('https://') ||
+        /^[A-Z0-9_]{3,}$/.test(token)
+      ) {
+        return token;
+      }
+      return Array.from(token)
+        .map((ch) => SMALL_CAPS_MAP[ch.toLowerCase()] ?? ch)
+        .join('');
+    })
+    .join('');
+}
+
 export function buildWelcomeMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
-  const text = [
-    '🎧 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐌𝐔𝐒𝐈𝐂 𝐁𝐎𝐓',
-    '',
-    '🎶 Your Music, Your World!',
-    '✨ Premium Music Experience',
-    '⚡ Ultra Fast Performance',
-    '🎚️ Advanced Music Controls',
-    '🎤 Auto Live Join System',
-    '🎧 Personal Account Control',
-    '🔥 Smart Music Streaming',
-  ].join('\n');
+  const text = toSmallCaps(
+    [
+      '🎧 Welcome To Premium Music Bot',
+      '',
+      '🎶 Your Music, Your World!',
+      '✨ Premium Music Experience',
+      '⚡ Ultra Fast Performance',
+      '🎚️ Advanced Music Controls',
+      '🎤 Auto Live Join System',
+      '🎧 Personal Account Control',
+      '🔥 Smart Music Streaming',
+    ].join('\n'),
+  );
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: '🎵 Play Music', callbackData: 'cmd:play_prompt' },
-      { text: '🎧 Music Player', callbackData: 'cmd:player' },
+      { text: toSmallCaps('🎵 Play Music'), callbackData: 'cmd:play_prompt' },
+      { text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player' },
     ],
     [
-      { text: '🎤 Auto Live Join', callbackData: 'cmd:live_panel' },
-      { text: '👤 Account Control', callbackData: 'cmd:account' },
+      { text: toSmallCaps('🎤 Auto Live Join'), callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account' },
     ],
     [
-      { text: '📊 Now Playing', callbackData: 'cmd:nowplaying' },
-      { text: '🎚️ Volume Control', callbackData: 'cmd:volume' },
+      { text: toSmallCaps('📊 Now Playing'), callbackData: 'cmd:nowplaying' },
+      { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume' },
     ],
     [
-      { text: '📚 Help & Commands', callbackData: 'cmd:help' },
-      { text: '👑 Bot Owner', callbackData: 'cmd:owner' },
+      { text: toSmallCaps('📚 Help & Commands'), callbackData: 'cmd:help' },
+      { text: toSmallCaps('👑 Bot Owner'), callbackData: 'cmd:owner' },
     ],
   ];
 
@@ -232,61 +261,65 @@ export function buildPlayerMessage(state: BotSystemState): { text: string; inlin
 
   const text = track
     ? [
-        '🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆',
+        toSmallCaps('🎧 Now Playing'),
         '',
-        `🎵 Song: ${track.title}`,
-        `👤 Artist: ${track.artist}`,
-        `⏱️ Duration: ${formatDuration(state.playback.positionSec)} / ${formatDuration(track.durationSec)}`,
-        `🔊 Volume: ${volLabel}`,
-        `▶️ Status: ${statusLabel}`,
-        `🎤 Live: ${liveLabel}`,
-        `📚 Queue: ${queuePos} · Repeat: ${state.playback.repeatMode.toUpperCase()}`,
+        toSmallCaps(`🎵 Song: ${track.title}`),
+        toSmallCaps(`👤 Artist: ${track.artist}`),
+        toSmallCaps(`⏱️ Duration: ${formatDuration(state.playback.positionSec)} / ${formatDuration(track.durationSec)}`),
+        toSmallCaps(`🔊 Volume: ${volLabel}`),
+        toSmallCaps(`▶️ Status: ${statusLabel}`),
+        toSmallCaps(`🎤 Live: ${liveLabel}`),
+        toSmallCaps(`📚 Queue: ${queuePos} · Repeat: ${state.playback.repeatMode.toUpperCase()}`),
         '',
         bar,
       ].join('\n')
-    : [
-        '🎧 𝐌𝐔𝐒𝐈𝐂 𝐏𝐋𝐀𝐘𝐄𝐑',
-        '',
-        'No track is currently active.',
-        `🎤 Live: ${liveLabel}`,
-        `🔊 Volume: ${volLabel}`,
-        'Send /play <song or link> or tap Play Music below.',
-      ].join('\n');
+    : toSmallCaps(
+        [
+          '🎧 Music Player',
+          '',
+          'No track is currently active.',
+          `🎤 Live: ${liveLabel}`,
+          `🔊 Volume: ${volLabel}`,
+          'Send /play <song or link> or tap Play Music below.',
+        ].join('\n'),
+      );
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: '⏮️ Prev', callbackData: 'player:prev' },
+      { text: toSmallCaps('⏮️ Prev'), callbackData: 'player:prev' },
       {
-        text: state.playback.status === 'playing' ? '⏸️ Pause' : '▶️ Resume',
+        text: toSmallCaps(state.playback.status === 'playing' ? '⏸️ Pause' : '▶️ Resume'),
         callbackData: state.playback.status === 'playing' ? 'player:pause' : 'player:resume',
       },
-      { text: '⏭️ Skip', callbackData: 'player:skip' },
-      { text: '⏹️ Stop', callbackData: 'player:stop' },
+      { text: toSmallCaps('⏭️ Skip'), callbackData: 'player:skip' },
+      { text: toSmallCaps('⏹️ Stop'), callbackData: 'player:stop' },
     ],
     [
-      { text: `🔁 Repeat: ${state.playback.repeatMode.toUpperCase()}`, callbackData: 'player:repeat' },
-      { text: `📚 Queue (${state.playback.queue.length})`, callbackData: 'cmd:queue' },
+      { text: toSmallCaps(`🔁 Repeat: ${state.playback.repeatMode.toUpperCase()}`), callbackData: 'player:repeat' },
+      { text: toSmallCaps(`📚 Queue (${state.playback.queue.length})`), callbackData: 'cmd:queue' },
     ],
     [
-      { text: '🎚️ Volume Control', callbackData: 'cmd:volume' },
-      { text: '🎤 Live Control', callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume' },
+      { text: toSmallCaps('🎤 Live Control'), callbackData: 'cmd:live_panel' },
     ],
-    [{ text: '🔙 Main Menu', callbackData: 'cmd:start' }],
+    [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }],
   ];
 
   return { text, inlineKeyboard };
 }
 
 export function buildVolumeMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
-  const displayVol = state.playback.muted ? '🔇 MUTED' : `🔊 ${state.playback.volume}%`;
-  const text = [
-    '🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋',
-    '',
-    `<  ${displayVol}  >`,
-    '',
-    `Group Profile: ${state.liveSession.active ? state.liveSession.groupIdentifier : 'Global Default'}`,
-    'Allowed Range: 10% – 200% (FFmpeg Real-Time Gain)',
-  ].join('\n');
+  const displayVol = state.playback.muted ? '🔇 Muted' : `🔊 ${state.playback.volume}%`;
+  const text = toSmallCaps(
+    [
+      '🎚️ Volume Control',
+      '',
+      `<  ${displayVol}  >`,
+      '',
+      `Group Profile: ${state.liveSession.active ? state.liveSession.groupIdentifier : 'Global Default'}`,
+      'Allowed Range: 10% – 200% (FFmpeg Real-Time Gain)',
+    ].join('\n'),
+  );
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
@@ -298,10 +331,10 @@ export function buildVolumeMessage(state: BotSystemState): { text: string; inlin
       { text: '➕ 20%', callbackData: 'vol:+20' },
     ],
     [
-      { text: '🔇 MUTE', callbackData: 'vol:mute' },
-      { text: '🔊 UNMUTE', callbackData: 'vol:unmute' },
+      { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute' },
+      { text: toSmallCaps('🔊 Unmute'), callbackData: 'vol:unmute' },
     ],
-    [{ text: '🔙 BACK TO PLAYER', callbackData: 'cmd:player' }],
+    [{ text: toSmallCaps('🔙 Back To Player'), callbackData: 'cmd:player' }],
   ];
 
   return { text, inlineKeyboard };
@@ -310,54 +343,56 @@ export function buildVolumeMessage(state: BotSystemState): { text: string; inlin
 export function buildLiveControlMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const acct = state.account;
   const live = state.liveSession;
-  const text = live.active
-    ? [
-        '🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃',
-        '',
-        `✅ Personal Account: ${acct.displayName} (${acct.username})`,
-        '🎧 Voice Chat: Active',
-        `📍 Group: ${live.groupTitle} (${live.groupIdentifier})`,
-        `🎵 Music Player: ${state.playback.currentTrack ? 'Streaming' : 'Ready'}`,
-        `🔊 Audio: ${state.playback.muted ? 'Muted' : `${state.playback.volume}%`}`,
-        `⚡ Connection: ${live.connectionQuality}`,
-        `📡 Streams: ${live.activeStreamsCount} / ${live.maxConcurrentStreams}`,
-      ].join('\n')
-    : [
-        '🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋 𝐏𝐀𝐍𝐄𝐋',
-        '',
-        `👤 Personal Account: ${acct.status.toUpperCase()} (${acct.username})`,
-        '🎧 Voice Chat: Not Connected',
-        'Send /joinlive https://t.me/group_name/123 or tap Join Live.',
-      ].join('\n');
+  const text = toSmallCaps(
+    live.active
+      ? [
+          '🎤 Live Connected',
+          '',
+          `✅ Personal Account: ${acct.displayName} (${acct.username})`,
+          '🎧 Voice Chat: Active',
+          `📍 Group: ${live.groupTitle} (${live.groupIdentifier})`,
+          `🎵 Music Player: ${state.playback.currentTrack ? 'Streaming' : 'Ready'}`,
+          `🔊 Audio: ${state.playback.muted ? 'Muted' : `${state.playback.volume}%`}`,
+          `⚡ Connection: ${live.connectionQuality}`,
+          `📡 Streams: ${live.activeStreamsCount} / ${live.maxConcurrentStreams}`,
+        ].join('\n')
+      : [
+          '🎤 Live Control Panel',
+          '',
+          `👤 Personal Account: ${acct.status.toUpperCase()} (${acct.username})`,
+          '🎧 Voice Chat: Not Connected',
+          'Send /joinlive https://t.me/group_name/123 or tap Join Live.',
+        ].join('\n'),
+  );
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: '🎤 Join Live', callbackData: 'live:join_demo' },
-      { text: '🚪 Leave Live', callbackData: 'live:leave' },
+      { text: toSmallCaps('🎤 Join Live'), callbackData: 'live:join_demo' },
+      { text: toSmallCaps('🚪 Leave Live'), callbackData: 'live:leave' },
     ],
     [
-      { text: '▶️ Play Music', callbackData: 'cmd:play_demo' },
-      { text: '⏸️ Pause Music', callbackData: 'player:pause' },
+      { text: toSmallCaps('▶️ Play Music'), callbackData: 'cmd:play_demo' },
+      { text: toSmallCaps('⏸️ Pause Music'), callbackData: 'player:pause' },
     ],
     [
-      { text: '▶️ Resume Music', callbackData: 'player:resume' },
-      { text: '⏭️ Skip Music', callbackData: 'player:skip' },
+      { text: toSmallCaps('▶️ Resume Music'), callbackData: 'player:resume' },
+      { text: toSmallCaps('⏭️ Skip Music'), callbackData: 'player:skip' },
     ],
     [
-      { text: '⏹️ Stop Music', callbackData: 'player:stop' },
-      { text: '📊 Live Status', callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('⏹️ Stop Music'), callbackData: 'player:stop' },
+      { text: toSmallCaps('📊 Live Status'), callbackData: 'cmd:live_panel' },
     ],
     [
-      { text: '🔊 Volume +10%', callbackData: 'vol:+10' },
-      { text: '🔉 Volume -10%', callbackData: 'vol:-10' },
+      { text: toSmallCaps('🔊 Volume +10%'), callbackData: 'vol:+10' },
+      { text: toSmallCaps('🔉 Volume -10%'), callbackData: 'vol:-10' },
     ],
     [
-      { text: '🔇 Mute', callbackData: 'vol:mute' },
-      { text: '🔊 Unmute', callbackData: 'vol:unmute' },
+      { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute' },
+      { text: toSmallCaps('🔊 Unmute'), callbackData: 'vol:unmute' },
     ],
     [
-      { text: '🔄 Reconnect', callbackData: 'account:reconnect' },
-      { text: '🔙 Main Menu', callbackData: 'cmd:start' },
+      { text: toSmallCaps('🔄 Reconnect'), callbackData: 'account:reconnect' },
+      { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' },
     ],
   ];
 
@@ -366,28 +401,30 @@ export function buildLiveControlMessage(state: BotSystemState): { text: string; 
 
 export function buildAccountMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const a = state.account;
-  const text = [
-    '👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓 𝐂𝐎𝐍𝐓𝐑𝐎𝐋',
-    '',
-    `Name: ${a.displayName}`,
-    `Username: ${a.username}`,
-    `Phone: ${a.phoneMasked}`,
-    `MTProto Status: ${a.status.toUpperCase()} (${a.online ? 'Online' : 'Offline'})`,
-    `Active Voice Chat: ${state.liveSession.active ? state.liveSession.groupIdentifier : 'None'}`,
-    `Session Vault: ${a.sessionEncrypted ? 'AES-256-GCM Encrypted (Leak Guard Active)' : 'Not Configured'}`,
-    `Reconnect Attempts: ${a.retryCount} / ${a.maxRetries}`,
-  ].join('\n');
+  const text = toSmallCaps(
+    [
+      '👤 Personal Account Control',
+      '',
+      `Name: ${a.displayName}`,
+      `Username: ${a.username}`,
+      `Phone: ${a.phoneMasked}`,
+      `MTProto Status: ${a.status.toUpperCase()} (${a.online ? 'Online' : 'Offline'})`,
+      `Active Voice Chat: ${state.liveSession.active ? state.liveSession.groupIdentifier : 'None'}`,
+      `Session Vault: ${a.sessionEncrypted ? 'AES-256-GCM Encrypted (Leak Guard Active)' : 'Not Configured'}`,
+      `Reconnect Attempts: ${a.retryCount} / ${a.maxRetries}`,
+    ].join('\n'),
+  );
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: '🔗 Connect Account', callbackData: 'account:connect' },
-      { text: '🔌 Disconnect', callbackData: 'account:disconnect' },
+      { text: toSmallCaps('🔗 Connect Account'), callbackData: 'account:connect' },
+      { text: toSmallCaps('🔌 Disconnect'), callbackData: 'account:disconnect' },
     ],
     [
-      { text: '🔄 Reconnect', callbackData: 'account:reconnect' },
-      { text: '🎤 Live Control', callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('🔄 Reconnect'), callbackData: 'account:reconnect' },
+      { text: toSmallCaps('🎤 Live Control'), callbackData: 'cmd:live_panel' },
     ],
-    [{ text: '🔙 Main Menu', callbackData: 'cmd:start' }],
+    [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }],
   ];
 
   return { text, inlineKeyboard };
@@ -395,31 +432,33 @@ export function buildAccountMessage(state: BotSystemState): { text: string; inli
 
 export function buildOwnerMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const s = state.stats;
-  const text = [
-    '👑 𝐎𝐖𝐍𝐄𝐑 𝐃𝐀𝐒𝐇𝐁𝐎𝐀𝐑𝐃',
-    '',
-    `👥 Total Users: ${s.totalUsers}`,
-    `💬 Total Groups: ${s.totalGroups}`,
-    `🎵 Total Music Played: ${s.totalMusicPlayed}`,
-    `📡 Active Live Sessions: ${state.liveSession.active ? 1 : 0}`,
-    `👤 Connected Accounts: ${state.account.status === 'connected' ? 1 : 0}`,
-    `🖥️ Server CPU / RAM: ${s.cpuPercent}% / ${s.ramPercent}%`,
-    `⚡ Backend Worker: ${s.backendOnline ? `Online (${s.backendLatencyMs}ms)` : 'Offline'}`,
-    `🗄️ MySQL Database: ${s.databaseOnline ? 'Connected' : 'Offline'}`,
-    `🛡️ Maintenance Mode: ${state.maintenanceMode ? 'ENABLED' : 'OFF'}`,
-  ].join('\n');
+  const text = toSmallCaps(
+    [
+      '👑 Owner Dashboard',
+      '',
+      `👥 Total Users: ${s.totalUsers}`,
+      `💬 Total Groups: ${s.totalGroups}`,
+      `🎵 Total Music Played: ${s.totalMusicPlayed}`,
+      `📡 Active Live Sessions: ${state.liveSession.active ? 1 : 0}`,
+      `👤 Connected Accounts: ${state.account.status === 'connected' ? 1 : 0}`,
+      `🖥️ Server CPU / RAM: ${s.cpuPercent}% / ${s.ramPercent}%`,
+      `⚡ Backend Worker: ${s.backendOnline ? `Online (${s.backendLatencyMs}ms)` : 'Offline'}`,
+      `🗄️ MySQL Database: ${s.databaseOnline ? 'Connected' : 'Offline'}`,
+      `🛡️ Maintenance Mode: ${state.maintenanceMode ? 'Enabled' : 'Off'}`,
+    ].join('\n'),
+  );
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
       {
-        text: state.maintenanceMode ? '✅ Disable Maintenance' : '🛠️ Enable Maintenance',
+        text: toSmallCaps(state.maintenanceMode ? '✅ Disable Maintenance' : '🛠️ Enable Maintenance'),
         callbackData: 'owner:toggle_maintenance',
       },
-      { text: '🔄 Restart Backend', callbackData: 'owner:restart_backend' },
+      { text: toSmallCaps('🔄 Restart Backend'), callbackData: 'owner:restart_backend' },
     ],
     [
-      { text: '👤 Account Control', callbackData: 'cmd:account' },
-      { text: '🔙 Main Menu', callbackData: 'cmd:start' },
+      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account' },
+      { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' },
     ],
   ];
 
@@ -427,26 +466,28 @@ export function buildOwnerMessage(state: BotSystemState): { text: string; inline
 }
 
 export function buildHelpMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
-  const text = [
-    '📚 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐑𝐄𝐅𝐄𝐑𝐄𝐍𝐂𝐄',
-    '',
-    'General:',
-    '/start · /help · /play <song|url> · /pause · /resume',
-    '/skip · /stop · /queue · /nowplaying',
-    '/volume <10-200> · /mute · /unmute',
-    '',
-    'Live & Personal Account:',
-    '/joinlive <t.me link> · /leavelive · /live · /autojoin',
-    '/account · /connect · /disconnect · /reconnect',
-    '',
-    'System & Admin:',
-    '/ping · /stats · /reload · /status',
-    '/broadcast · /maintenance · /users · /groups · /restart',
-  ].join('\n');
+  const text = toSmallCaps(
+    [
+      '📚 Command Reference',
+      '',
+      'General:',
+      '/start · /help · /play <song|url> · /pause · /resume',
+      '/skip · /stop · /queue · /nowplaying',
+      '/volume <10-200> · /mute · /unmute',
+      '',
+      'Live & Personal Account:',
+      '/joinlive <t.me link> · /leavelive · /live · /autojoin',
+      '/account · /connect · /disconnect · /reconnect',
+      '',
+      'System & Admin:',
+      '/ping · /stats · /reload · /status',
+      '/broadcast · /maintenance · /users · /groups · /restart',
+    ].join('\n'),
+  );
 
   return {
     text,
-    inlineKeyboard: [[{ text: '🎧 Music Player', callbackData: 'cmd:player' }, { text: '🔙 Main Menu', callbackData: 'cmd:start' }]],
+    inlineKeyboard: [[{ text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player' }, { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }]],
   };
 }
 
@@ -595,9 +636,8 @@ export function processBotInput(
           kind: 'welcome',
           isAnimated: true,
           animationFrames: [
-            '🎧 Initializing Premium Music Bot...\n◉ ○ ○ ○',
-            '🎶 Loading Personal Account Bridge...\n◉ ◉ ○ ○',
-            '✨ Preparing Inline Controls...\n◉ ◉ ◉ ○',
+            `${toSmallCaps('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
             w.text,
           ],
         }),
@@ -645,12 +685,12 @@ export function processBotInput(
       state.messages.push(
         makeMessage(
           'bot',
-          '🎵 Send /play <song name or audio URL> or tap Quick Demo Play below.',
+          toSmallCaps('🎵 Send /play <song name or audio URL>, /search <song>, or tap Quick Demo Play below.'),
           {
             kind: 'info',
             inlineKeyboard: [
-              [{ text: '▶️ Play Midnight Signal', callbackData: 'cmd:play_demo' }],
-              [{ text: '🔙 Main Menu', callbackData: 'cmd:start' }],
+              [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo' }],
+              [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }],
             ],
           },
         ),
@@ -804,9 +844,8 @@ export function processBotInput(
           animationFrames:
             action === 'reconnect' || action === 'connect'
               ? [
-                  '🔐 Verifying Encrypted MTProto Session...\n◉ ○ ○ ○',
-                  '📡 Handshaking with Telegram DC...\n◉ ◉ ○ ○',
-                  '✅ Personal Account Online!\n◉ ◉ ◉ ◉',
+                  `${toSmallCaps('🔐 Verifying MTProto Session...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+                  `${toSmallCaps('✅ Personal Account Online!')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
                   a.text,
                 ]
               : undefined,
@@ -833,8 +872,8 @@ export function processBotInput(
           kind: 'owner',
           isAnimated: true,
           animationFrames: [
-            '🔄 Restarting Python Audio Streaming Worker...\n◉ ○ ○ ○',
-            '🎚️ Re-initializing FFmpeg & PyTgCalls...\n◉ ◉ ◉ ○',
+            `${toSmallCaps('🔄 Restarting Audio Worker...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+            `${toSmallCaps('🎚️ Syncing FFmpeg & PyTgCalls...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
             o.text,
           ],
         }),
@@ -857,9 +896,8 @@ export function processBotInput(
           kind: 'welcome',
           isAnimated: true,
           animationFrames: [
-            '🎧 Starting Premium Music Engine...\n◉ ○ ○ ○',
-            '🎶 Syncing Live Audio Controls...\n◉ ◉ ○ ○',
-            '✨ Ready!\n◉ ◉ ◉ ◉',
+            `${toSmallCaps('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
             w.text,
           ],
         }),
@@ -920,9 +958,8 @@ export function processBotInput(
           kind: 'live',
           isAnimated: true,
           animationFrames: [
-            '🎧 Connecting to Voice Chat...\n◉ ○ ○ ○',
-            `🎤 Joining Live (${parsed.chatIdentifier})...\n◉ ◉ ○ ○`,
-            '🎵 Preparing Music & FFmpeg Pipe...\n◉ ◉ ◉ ○',
+            `${toSmallCaps('🎤 Connecting Voice Chat...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+            `${toSmallCaps(`🔊 Joining ${parsed.chatIdentifier}...`)}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
             liveMsg.text,
           ],
         }),
@@ -1022,9 +1059,8 @@ export function processBotInput(
           kind: 'player',
           isAnimated: true,
           animationFrames: [
-            '🎵 Validating Music Source...\n◉ ○ ○ ○',
-            '🎚️ Processing FFmpeg Opus Stream...\n◉ ◉ ◉ ○',
-            '🔥 MUSIC STREAMING STARTED!\n◉ ◉ ◉ ◉',
+            `${toSmallCaps('🎵 Fetching Audio...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+            `${toSmallCaps('🎚️ Tuning FFmpeg Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
             player.text,
           ],
         }),

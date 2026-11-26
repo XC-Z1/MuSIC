@@ -1,16 +1,15 @@
-import { editMessageText, sendMessage, type InlineKeyboardMarkup } from './telegram';
+import { editMessageText, sendMessage, toSmallCaps, type InlineKeyboardMarkup } from './telegram';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 /**
- * Plays a smooth, Telegram-rate-limit-safe multi-frame animation using editMessageText.
- * Keeps interval >= 550ms and <= 4 frames per sequence to prevent 429 Too Many Requests.
+ * Plays a snappy, modern equalizer + block-bar transition via editMessageText.
  */
 export async function playAnimatedSequence(
   chatId: number | string,
   frames: string[],
   finalReplyMarkup?: InlineKeyboardMarkup,
-  delayMs = 550,
+  delayMs = 260,
 ): Promise<number | null> {
   if (frames.length === 0) return null;
 
@@ -34,23 +33,19 @@ export async function playAnimatedSequence(
 
 export const ANIMATION_PRESETS = {
   welcome: [
-    '🎧 Initializing Premium Music Bot...\n◉ ○ ○ ○',
-    '🎶 Syncing Personal Account Bridge...\n◉ ◉ ○ ○',
-    '✨ Preparing Live Audio Console...\n◉ ◉ ◉ ○',
+    `${toSmallCaps('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+    `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
   ],
   joinLive: (target: string) => [
-    `🎧 Connecting to Voice Chat...\nTarget: ${target}\n◉ ○ ○ ○`,
-    `🎤 Joining Live...\nVerifying Account Access...\n◉ ◉ ○ ○`,
-    `🎵 Preparing Music & Opus Stream...\n◉ ◉ ◉ ○`,
+    `${toSmallCaps(`🎤 Connecting Voice Chat (${target})...`)}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+    `${toSmallCaps('🔊 Syncing Live Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
   ],
   playMusic: (query: string) => [
-    `🎵 Validating Music Source...\n${query}\n◉ ○ ○ ○`,
-    `🎚️ Processing Audio via FFmpeg...\n◉ ◉ ○ ○`,
-    `🔥 MUSIC STREAMING STARTED!\n◉ ◉ ◉ ◉`,
+    `${toSmallCaps(`🎵 Fetching Audio (${query})...`)}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+    `${toSmallCaps('🎚️ Tuning FFmpeg Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
   ],
   reconnect: [
-    '🔐 Verifying Encrypted MTProto Session...\n◉ ○ ○ ○',
-    '📡 Handshaking with Telegram DC...\n◉ ◉ ○ ○',
-    '✅ Personal Account Reconnected!\n◉ ◉ ◉ ◉',
+    `${toSmallCaps('🔐 Verifying MTProto Session...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
+    `${toSmallCaps('✅ Personal Account Reconnected!')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
   ],
 };

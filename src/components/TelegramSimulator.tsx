@@ -40,7 +40,7 @@ function AnimatedMessageBody({ message }: { message: BotMessage }) {
       } else {
         setFrameIndex(current);
       }
-    }, 360);
+    }, 260);
     return () => window.clearInterval(timer);
   }, [message.id, frames]);
 

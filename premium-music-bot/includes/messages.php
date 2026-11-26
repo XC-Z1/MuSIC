@@ -1,10 +1,47 @@
 <?php
 declare(strict_types=1);
 
+function toSmallCaps(string $input): string
+{
+    static $map = [
+        'a' => 'ᴀ', 'b' => 'ʙ', 'c' => 'ᴄ', 'd' => 'ᴅ', 'e' => 'ᴇ', 'f' => 'ғ',
+        'g' => 'ɢ', 'h' => 'ʜ', 'i' => 'ɪ', 'j' => 'ᴊ', 'k' => 'ᴋ', 'l' => 'ʟ',
+        'm' => 'ᴍ', 'n' => 'ɴ', 'o' => 'ᴏ', 'p' => 'ᴘ', 'q' => 'ǫ', 'r' => 'ʀ',
+        's' => 's', 't' => 'ᴛ', 'u' => 'ᴜ', 'v' => 'ᴠ', 'w' => 'ᴡ', 'x' => 'x',
+        'y' => 'ʏ', 'z' => 'ᴢ',
+    ];
+
+    $tokens = preg_split('/(\s+)/u', $input, -1, PREG_SPLIT_DELIM_CAPTURE);
+    if ($tokens === false) {
+        return $input;
+    }
+
+    $out = '';
+    foreach ($tokens as $token) {
+        if ($token === '' || preg_match('/^\s+$/u', $token)) {
+            $out .= $token;
+            continue;
+        }
+        if (
+            str_starts_with($token, '/') ||
+            str_starts_with($token, '@') ||
+            str_starts_with($token, 'http://') ||
+            str_starts_with($token, 'https://') ||
+            preg_match('/^[A-Z0-9_]{3,}$/', $token)
+        ) {
+            $out .= $token;
+            continue;
+        }
+        $lower = strtolower($token);
+        $out .= strtr($lower, $map);
+    }
+    return $out;
+}
+
 function getWelcomeMessageText(): string
 {
-    return implode("\n", [
-        '🎧 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐌𝐔𝐒𝐈𝐂 𝐁𝐎𝐓',
+    return toSmallCaps(implode("\n", [
+        '🎧 Welcome To Premium Music Bot',
         '',
         '🎶 Your Music, Your World!',
         '✨ Premium Music Experience',
@@ -13,7 +50,7 @@ function getWelcomeMessageText(): string
         '🎤 Auto Live Join System',
         '🎧 Personal Account Control',
         '🔥 Smart Music Streaming',
-    ]);
+    ]));
 }
 
 function formatProgressBar(int $positionSec, int $durationSec, int $width = 17): string
@@ -36,14 +73,12 @@ function formatDurationClock(int $seconds): string
 
 function getHelpMessageText(): string
 {
-    return implode("\n", [
-        '📚 𝐂𝐎𝐌𝐌𝐀𝐍𝐃 𝐑𝐄𝐅𝐄𝐑𝐄𝐍𝐂𝐄',
+    return toSmallCaps(implode("\n", [
+        '📚 Command Reference',
         '',
-        'General Commands:',
-        '/start - Welcome · /help - Help Menu',
-        '/play <url|song> - Play Music · /pause - Pause',
-        '/resume - Resume · /skip - Skip · /stop - Stop',
-        '/queue - Queue · /nowplaying - Current Track',
+        'Music Selection & Playback:',
+        '/search <song> · /play <url|song> · /pause',
+        '/resume · /skip · /stop · /queue · /nowplaying',
         '/volume <10-200> · /mute · /unmute',
         '',
         'Live & Personal Account:',
@@ -53,5 +88,5 @@ function getHelpMessageText(): string
         'System & Admin:',
         '/ping · /stats · /reload · /status',
         '/broadcast · /maintenance · /users · /groups · /restart',
-    ]);
+    ]));
 }
