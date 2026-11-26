@@ -688,7 +688,7 @@ export function processBotInput(
           inlineKeyboard: v.inlineKeyboard,
           kind: 'volume',
           effectBadge: '🔥 Fire Effect',
-          animationFrames: makeEqualizerFrames('🎚️ Opening Volume Control...', '🔥 Volume Range: 10% – 200%...', v.text),
+          animationFrames: [toSmallCaps('🎚️ Opening Volume Control...'), toSmallCaps('🔥 Volume Range: 10% – 200%...'), v.text],
         }),
       );
       return state;
@@ -748,7 +748,7 @@ export function processBotInput(
         makeMessage('bot', guide, {
           kind: 'info',
           effectBadge: '🔥 Fire Effect',
-          animationFrames: makeEqualizerFrames('🎵 Opening Music Set...', '🔥 Ready To Stream...', guide),
+          animationFrames: [toSmallCaps('🎵 Opening Music Set...'), toSmallCaps('🔥 Ready To Stream...'), guide],
           inlineKeyboard: [
             [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo', style: 'success' }],
             [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
@@ -918,7 +918,7 @@ export function processBotInput(
           effectBadge: action === 'disconnect' ? '👎 Alert Effect' : '❤️ Heart Effect',
           animationFrames:
             action === 'reconnect' || action === 'connect'
-              ? makeEqualizerFrames('🔐 Verifying MTProto Session...', '✅ Personal Account Online!', a.text)
+              ? [toSmallCaps('🔐 Verifying MTProto Session...'), toSmallCaps('✅ Personal Account Online!'), a.text]
               : undefined,
         }),
       );
@@ -948,7 +948,7 @@ export function processBotInput(
           inlineKeyboard: o.inlineKeyboard,
           kind: 'owner',
           effectBadge: '⚡ Restarted',
-          animationFrames: makeEqualizerFrames('🔄 Restarting Audio Worker...', '🎚️ Syncing FFmpeg & PyTgCalls...', o.text),
+          animationFrames: [toSmallCaps('🔄 Restarting Audio Worker...'), toSmallCaps('🎚️ Syncing FFmpeg & PyTgCalls...'), o.text],
         }),
       );
       return state;
@@ -1035,7 +1035,7 @@ export function processBotInput(
           inlineKeyboard: liveMsg.inlineKeyboard,
           kind: 'live',
           effectBadge: '❤️ Heart Effect',
-          animationFrames: makeEqualizerFrames('🎤 Connecting Voice Chat...', `🔊 Joining ${parsed.chatIdentifier}...`, liveMsg.text),
+          animationFrames: [toSmallCaps('🎤 Connecting Voice Chat...'), toSmallCaps(`🔊 Joining ${parsed.chatIdentifier}...`), liveMsg.text],
         }),
       );
       return state;
@@ -1144,7 +1144,7 @@ export function processBotInput(
           inlineKeyboard: player.inlineKeyboard,
           kind: 'player',
           effectBadge: '🔥 Fire Effect',
-          animationFrames: makeEqualizerFrames('🎵 Fetching Audio...', '🔥 Tuning FFmpeg Stream...', player.text),
+          animationFrames: [toSmallCaps('🎵 Fetching Audio...'), toSmallCaps('🔥 Tuning FFmpeg Stream...'), player.text],
         }),
       );
       return state;
@@ -1186,7 +1186,7 @@ export function processBotInput(
           inlineKeyboard: v.inlineKeyboard,
           kind: 'volume',
           effectBadge: '🔥 Fire Effect',
-          animationFrames: makeEqualizerFrames('🎚️ Opening Volume Control...', '🔥 Volume Range: 10% – 200%...', v.text),
+          animationFrames: [toSmallCaps('🎚️ Opening Volume Control...'), toSmallCaps('🔥 Volume Range: 10% – 200%...'), v.text],
         }),
       );
       return state;

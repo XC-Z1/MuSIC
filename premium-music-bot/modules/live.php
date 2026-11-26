@@ -44,11 +44,8 @@ function handleJoinLiveCommand(PDO $pdo, array $config, int|string $chatId, int 
     ]));
 
     sendTelegramEffectMessage($config, $chatId, 'private', $final, buildLiveControlKeyboard(), '5159385139981059251', [
-        toSmallCaps('🎤 Connecting Voice Chat...') . "\n▁▂▃▄▅▆▇  ▰▱▱▱▱",
-        toSmallCaps('🎤 Connecting Voice Chat...') . "\n▂▄▆▇▆▄▂  ▰▰▱▱▱",
-        toSmallCaps('🎤 Connecting Voice Chat...') . "\n▄▆▇▅▃▅▇  ▰▰▰▱▱",
-        toSmallCaps('🔊 Syncing Live Stream...') . "\n▆▇▅▃▂▄▆  ▰▰▰▰▱",
-        toSmallCaps('🔊 Syncing Live Stream...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
+        toSmallCaps('🎤 Connecting Voice Chat...'),
+        toSmallCaps('🔊 Syncing Live Stream...'),
     ]);
 }
 

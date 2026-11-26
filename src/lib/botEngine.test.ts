@@ -49,9 +49,7 @@ test('/joinlive validates link and connects personal account to voice chat with 
   assert.equal(joined.liveSession.voiceChatId, '88');
   const lastMsg = joined.messages[joined.messages.length - 1];
   assert.equal(lastMsg.effectBadge, '❤️ Heart Effect');
-  assert.equal(lastMsg.animationFrames?.length, 6);
-  assert.ok(lastMsg.animationFrames?.[0]?.includes('▁▂▃▄▅▆▇  ▰▱▱▱▱'));
-  assert.ok(lastMsg.animationFrames?.[4]?.includes('▇▆▅▄▃▂▁  ▰▰▰▰▰'));
+  assert.equal(lastMsg.animationFrames?.some((f) => f.includes('▁▂▃▄▅▆▇') || f.includes('▰▱▱▱▱')), false);
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[0]?.style, 'success');
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[1]?.style, 'danger');
 });
@@ -61,11 +59,14 @@ test('/play starts streaming and volume/mute callbacks scale up to 200% with Fir
   state = processBotInput(state, '/play Midnight Signal');
   assert.equal(state.playback.status, 'playing');
   assert.ok(state.playback.currentTrack?.title.includes('Midnight Signal'));
+  const playMsg = state.messages[state.messages.length - 1];
+  assert.equal(playMsg.animationFrames?.some((f) => f.includes('▁▂▃▄▅▆▇') || f.includes('▰▱▱▱▱')), false);
 
   state = processBotInput(state, 'cmd:volume', { isCallback: true });
   const volMenuMsg = state.messages[state.messages.length - 1];
   assert.equal(volMenuMsg.effectBadge, '🔥 Fire Effect');
-  assert.equal(volMenuMsg.animationFrames?.length, 6);
+  assert.equal(volMenuMsg.animationFrames?.length, 3);
+  assert.equal(volMenuMsg.animationFrames?.some((f) => f.includes('▁▂▃▄▅▆▇') || f.includes('▰▱▱▱▱')), false);
 
   state = processBotInput(state, 'vol:+20', { isCallback: true });
   assert.equal(state.playback.volume, 100);

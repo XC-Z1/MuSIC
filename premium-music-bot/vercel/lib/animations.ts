@@ -24,10 +24,10 @@ function makeEqualizerFrames(startLabel: string, endLabel: string): string[] {
 
 export const EQUALIZER_PRESETS = {
   welcome: makeEqualizerFrames('⚡ Booting Music Spam Bot...', '🎧 Syncing Live Controls...'),
-  joinLive: makeEqualizerFrames('🎤 Connecting Voice Chat...', '🔊 Syncing Live Stream...'),
-  playMusic: makeEqualizerFrames('🎵 Fetching Audio...', '🔥 Tuning FFmpeg Stream...'),
-  volume: makeEqualizerFrames('🎚️ Opening Volume Control...', '🔥 Volume Range: 10% – 200%...'),
-  searchMusic: makeEqualizerFrames('🔍 Searching Track...', '🔥 Matching Songs...'),
+  joinLive: [toSmallCaps('🎤 Connecting Voice Chat...'), toSmallCaps('🔊 Syncing Live Stream...')],
+  playMusic: [toSmallCaps('🎵 Fetching Audio...'), toSmallCaps('🔥 Tuning FFmpeg Stream...')],
+  volume: [toSmallCaps('🎚️ Opening Volume Control...'), toSmallCaps('🔥 Volume Range: 10% – 200%...')],
+  searchMusic: [toSmallCaps('🔍 Searching Track...'), toSmallCaps('🔥 Matching Songs...')],
 };
 
 export async function sendEffectMessage(
