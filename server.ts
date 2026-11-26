@@ -14,6 +14,7 @@ import {
 import {
   SlidingWindowRateLimiter,
   redactSecrets,
+  validateSafeExternalUrl,
   verifyWebhookSecret,
 } from './src/lib/security';
 
@@ -207,6 +208,59 @@ app.get('/api/export-zip', async (_req, res) => {
     res.send(buffer);
   } catch (err) {
     res.status(500).json({ ok: false, error: redactSecrets(String(err)) });
+  }
+});
+
+const BOT_TOKEN_PATTERN = /^\d{8,12}:[A-Za-z0-9_-]{30,55}$/;
+
+// Ephemeral Telegram setWebhook helper (never stores or logs token)
+app.post('/api/telegram/set-webhook', async (req, res) => {
+  const token = typeof req.body?.botToken === 'string' ? req.body.botToken.trim() : '';
+  const webhookUrl = typeof req.body?.webhookUrl === 'string' ? req.body.webhookUrl.trim() : '';
+  const secretToken = typeof req.body?.secretToken === 'string' ? req.body.secretToken.trim() : '';
+
+  if (!BOT_TOKEN_PATTERN.test(token)) {
+    res.status(400).json({ ok: false, error: 'Invalid Telegram Bot Token format.' });
+    return;
+  }
+
+  const urlCheck = validateSafeExternalUrl(webhookUrl);
+  if (!urlCheck.valid || !urlCheck.normalized?.startsWith('https://')) {
+    res.status(400).json({ ok: false, error: urlCheck.reason || 'Webhook URL must use HTTPS.' });
+    return;
+  }
+
+  try {
+    const tgRes = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: urlCheck.normalized,
+        allowed_updates: ['message', 'callback_query'],
+        ...(secretToken ? { secret_token: secretToken } : {}),
+      }),
+    });
+    const data = (await tgRes.json()) as Record<string, unknown>;
+    res.status(tgRes.ok ? 200 : 400).json(data);
+  } catch (err) {
+    res.status(502).json({ ok: false, error: redactSecrets(String(err)) });
+  }
+});
+
+// Ephemeral Telegram getWebhookInfo helper (never stores or logs token)
+app.post('/api/telegram/webhook-info', async (req, res) => {
+  const token = typeof req.body?.botToken === 'string' ? req.body.botToken.trim() : '';
+  if (!BOT_TOKEN_PATTERN.test(token)) {
+    res.status(400).json({ ok: false, error: 'Invalid Telegram Bot Token format.' });
+    return;
+  }
+
+  try {
+    const tgRes = await fetch(`https://api.telegram.org/bot${encodeURIComponent(token)}/getWebhookInfo`);
+    const data = (await tgRes.json()) as Record<string, unknown>;
+    res.status(tgRes.ok ? 200 : 400).json(data);
+  } catch (err) {
+    res.status(502).json({ ok: false, error: redactSecrets(String(err)) });
   }
 });
 

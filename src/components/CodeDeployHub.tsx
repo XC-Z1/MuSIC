@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { Check, Copy, Download, FileCode2, ShieldCheck } from 'lucide-react';
+import { Check, Copy, Download, FileCode2, Globe, ShieldCheck } from 'lucide-react';
 
 export interface ProjectFileItem {
   path: string;
@@ -26,6 +26,79 @@ export const CodeDeployHub: React.FC<CodeDeployHubProps> = ({ files, loading }) 
   const [filter, setFilter] = useState<FilterCategory>('all');
   const [selectedPath, setSelectedPath] = useState<string>('vercel/api/webhook.ts');
   const [copied, setCopied] = useState(false);
+
+  const [webhookUrl, setWebhookUrl] = useState('https://music-eosin-ten-42.vercel.app/api/webhook');
+  const [botToken, setBotToken] = useState('');
+  const [secretToken, setSecretToken] = useState('');
+  const [webhookStatus, setWebhookStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [webhookBusy, setWebhookBusy] = useState(false);
+
+  const handleSetWebhook = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!botToken.trim() || !webhookUrl.trim()) {
+      setWebhookStatus({ ok: false, message: 'Enter both your Bot Token and HTTPS Webhook URL.' });
+      return;
+    }
+    setWebhookBusy(true);
+    setWebhookStatus(null);
+    try {
+      const res = await fetch('/api/telegram/set-webhook', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          botToken: botToken.trim(),
+          webhookUrl: webhookUrl.trim(),
+          secretToken: secretToken.trim(),
+        }),
+      });
+      const json = (await res.json()) as { ok?: boolean; description?: string; error?: string };
+      setWebhookStatus({
+        ok: Boolean(json.ok),
+        message: json.description || json.error || (json.ok ? 'Webhook registered cleanly.' : 'Failed to register webhook.'),
+      });
+    } catch {
+      setWebhookStatus({ ok: false, message: 'Network error contacting Telegram Bot API.' });
+    } finally {
+      setWebhookBusy(false);
+    }
+  };
+
+  const handleCheckWebhook = async () => {
+    if (!botToken.trim()) {
+      setWebhookStatus({ ok: false, message: 'Enter your Bot Token first to inspect getWebhookInfo.' });
+      return;
+    }
+    setWebhookBusy(true);
+    setWebhookStatus(null);
+    try {
+      const res = await fetch('/api/telegram/webhook-info', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ botToken: botToken.trim() }),
+      });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        description?: string;
+        result?: { url?: string; pending_update_count?: number; last_error_message?: string };
+      };
+      if (json.ok && json.result) {
+        const r = json.result;
+        const summary = [
+          `URL: ${r.url || '(not set)'}`,
+          `Pending Updates: ${r.pending_update_count ?? 0}`,
+          r.last_error_message ? `Last Error: ${r.last_error_message}` : 'Last Error: None',
+        ].join(' · ');
+        setWebhookStatus({ ok: !r.last_error_message && Boolean(r.url), message: summary });
+      } else {
+        setWebhookStatus({ ok: false, message: json.description || json.error || 'Could not read webhook info.' });
+      }
+    } catch {
+      setWebhookStatus({ ok: false, message: 'Network error contacting Telegram Bot API.' });
+    } finally {
+      setWebhookBusy(false);
+    }
+  };
 
   const filteredFiles = useMemo(() => {
     if (filter === 'all') return files;
@@ -73,6 +146,83 @@ export const CodeDeployHub: React.FC<CodeDeployHubProps> = ({ files, loading }) 
             Download Complete ZIP ({files.length} files)
           </a>
         </div>
+      </section>
+
+      {/* Telegram Webhook Registration & Diagnostics */}
+      <section aria-label="Telegram Webhook Registration" className="rounded-xl border border-white/10 bg-[#111827] p-5 space-y-4">
+        <div className="flex items-center gap-2">
+          <Globe className="h-4 w-4 text-sky-400" aria-hidden="true" />
+          <h2 className="text-sm font-semibold text-slate-100">
+            Vercel Webhook Registration &amp; Live Diagnostics
+          </h2>
+        </div>
+        <p className="text-xs text-slate-400 leading-relaxed">
+          Deploy the root project (which now includes <span className="font-mono text-slate-200">/api/webhook.ts</span> and <span className="font-mono text-slate-200">/vercel.json</span>) to Vercel, set <span className="font-mono text-slate-200">TELEGRAM_BOT_TOKEN</span> in Vercel Environment Variables, then register your webhook below. Tokens are forwarded directly to Telegram&apos;s API and are never saved.
+        </p>
+
+        <form onSubmit={handleSetWebhook} className="grid grid-cols-1 md:grid-cols-12 gap-3 items-end">
+          <div className="md:col-span-5 space-y-1">
+            <label htmlFor="webhook-url-input" className="block text-xs text-slate-400">
+              Vercel Webhook URL (HTTPS)
+            </label>
+            <input
+              id="webhook-url-input"
+              type="url"
+              value={webhookUrl}
+              onChange={(e) => setWebhookUrl(e.target.value)}
+              placeholder="https://music-eosin-ten-42.vercel.app/api/webhook"
+              className="w-full rounded-lg border border-white/10 bg-[#0B1120] px-3 py-2 font-mono text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+            />
+          </div>
+          <div className="md:col-span-4 space-y-1">
+            <label htmlFor="webhook-token-input" className="block text-xs text-slate-400">
+              Bot Token (from @BotFather)
+            </label>
+            <input
+              id="webhook-token-input"
+              type="password"
+              value={botToken}
+              onChange={(e) => setBotToken(e.target.value)}
+              placeholder="123456789:AA..."
+              className="w-full rounded-lg border border-white/10 bg-[#0B1120] px-3 py-2 font-mono text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+            />
+          </div>
+          <div className="md:col-span-3 space-y-1">
+            <label htmlFor="webhook-secret-input" className="block text-xs text-slate-400">
+              Webhook Secret (Optional)
+            </label>
+            <input
+              id="webhook-secret-input"
+              type="password"
+              value={secretToken}
+              onChange={(e) => setSecretToken(e.target.value)}
+              placeholder="Match TELEGRAM_WEBHOOK_SECRET"
+              className="w-full rounded-lg border border-white/10 bg-[#0B1120] px-3 py-2 font-mono text-xs text-slate-100 focus:outline-none focus:border-sky-500"
+            />
+          </div>
+          <div className="md:col-span-12 flex flex-wrap items-center gap-2.5 pt-1">
+            <button
+              type="submit"
+              disabled={webhookBusy}
+              className="rounded-lg bg-sky-600 px-4 py-2 text-xs font-semibold text-white hover:bg-sky-500 transition-colors cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+            >
+              {webhookBusy ? 'Working...' : 'Set Webhook'}
+            </button>
+            <button
+              type="button"
+              disabled={webhookBusy}
+              onClick={handleCheckWebhook}
+              className="rounded-lg border border-white/10 bg-[#161F33] px-4 py-2 text-xs font-medium text-slate-200 hover:bg-white/10 transition-colors cursor-pointer whitespace-nowrap shrink-0 disabled:opacity-50"
+            >
+              Check Webhook Status
+            </button>
+            {webhookStatus && (
+              <p className={`text-xs font-mono ${webhookStatus.ok ? 'text-emerald-400' : 'text-amber-400'}`}>
+                {webhookStatus.message}
+              </p>
+            )}
+          </div>
+        </form>
       </section>
 
       {/* Interactive File Explorer */}
