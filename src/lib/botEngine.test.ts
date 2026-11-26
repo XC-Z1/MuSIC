@@ -27,8 +27,17 @@ test('renderProgressBar moves indicator smoothly across track duration', () => {
 test('/joinlive validates link and connects personal account to voice chat with colored buttons, native effect, and equalizer frames', () => {
   const initial = createInitialBotState();
   assert.equal(initial.botUsername, 'MUSIC SPAM BOT');
+  assert.deepEqual(
+    initial.messages[0].inlineKeyboard?.map((row) => row.length),
+    [1, 2, 3, 2],
+  );
   assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[0]?.style, 'success');
-  assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[1]?.style, 'primary');
+  assert.equal(initial.messages[0].inlineKeyboard?.[1]?.[0]?.style, 'primary');
+
+  const restarted = processBotInput(initial, '/start');
+  const startMsg = restarted.messages[restarted.messages.length - 1];
+  assert.equal(startMsg.animationFrames?.[0], '▁▂▃▄▅▆▇ ▰▱▱▱▱');
+  assert.equal(startMsg.animationFrames?.[1], '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰');
 
   const joined = processBotInput(initial, '/joinlive https://t.me/dhaka_chill_vc/88');
   assert.equal(joined.liveSession.active, true);
@@ -43,21 +52,33 @@ test('/joinlive validates link and connects personal account to voice chat with 
   assert.equal(lastMsg.inlineKeyboard?.[0]?.[1]?.style, 'danger');
 });
 
-test('/play starts streaming and volume/mute callbacks adjust state accurately', () => {
+test('/play starts streaming and volume/mute callbacks scale up to 200% with Fire animation', () => {
   let state = createInitialBotState();
   state = processBotInput(state, '/play Midnight Signal');
   assert.equal(state.playback.status, 'playing');
   assert.ok(state.playback.currentTrack?.title.includes('Midnight Signal'));
 
+  state = processBotInput(state, 'cmd:volume', { isCallback: true });
+  const volMenuMsg = state.messages[state.messages.length - 1];
+  assert.equal(volMenuMsg.effectBadge, '🔥 Fire Effect');
+  assert.ok((volMenuMsg.animationFrames?.length ?? 0) === 3);
+
   state = processBotInput(state, 'vol:+20', { isCallback: true });
   assert.equal(state.playback.volume, 100);
+
+  state = processBotInput(state, 'vol:+20', { isCallback: true });
+  assert.equal(state.playback.volume, 120);
+
+  state = processBotInput(state, 'vol:200', { isCallback: true });
+  assert.equal(state.playback.volume, 200);
+  assert.equal(state.messages[state.messages.length - 1].effectBadge, '🔥 Fire Effect');
 
   state = processBotInput(state, 'vol:mute', { isCallback: true });
   assert.equal(state.playback.muted, true);
 
   state = processBotInput(state, 'vol:unmute', { isCallback: true });
   assert.equal(state.playback.muted, false);
-  assert.equal(state.playback.volume, 100);
+  assert.equal(state.playback.volume, 200);
 });
 
 test('tickPlayback advances track and auto-skips to queued song upon completion', () => {

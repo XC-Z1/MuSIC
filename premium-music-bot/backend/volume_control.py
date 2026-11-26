@@ -33,6 +33,8 @@ class VolumeController:
             return self.set_volume(chat_id, state["volume"], muted=True)
         if action == "unmute":
             return self.set_volume(chat_id, state["previous_volume"], muted=False)
+        if action.isdigit():
+            return self.set_volume(chat_id, int(action), muted=False)
         delta = int(action)
         return self.set_volume(chat_id, state["volume"] + delta, muted=False)
 

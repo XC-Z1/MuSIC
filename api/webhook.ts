@@ -42,9 +42,62 @@ interface TelegramUpdate {
   callback_query?: {
     id: string;
     from: { id: number; username?: string; first_name?: string };
-    message?: { message_id: number; chat: { id: number; type?: string } };
+    message?: { message_id: number; chat: { id: number; type?: string }; text?: string };
     data?: string;
   };
+}
+
+const chatVolumeFallback = new Map<string, { volume: number; muted: boolean; previousVolume: number }>();
+
+function clampVol(val: number): number {
+  if (!Number.isFinite(val)) return 80;
+  return Math.min(200, Math.max(10, Math.round(val)));
+}
+
+function parseVolumeFromText(text?: string): { volume: number; muted: boolean } {
+  if (!text) return { volume: 80, muted: false };
+  if (/ᴍᴜᴛᴇᴅ|MUTED/i.test(text)) {
+    return { volume: 80, muted: true };
+  }
+  const match = text.match(/(\d{1,3})\s*%/);
+  if (match) {
+    return { volume: clampVol(Number(match[1])), muted: false };
+  }
+  return { volume: 80, muted: false };
+}
+
+function applyFallbackVolume(
+  chatId: number | string,
+  op: string,
+  messageText?: string,
+): { volume: number; muted: boolean } {
+  const key = String(chatId);
+  const parsed = parseVolumeFromText(messageText);
+  const prevState = chatVolumeFallback.get(key) ?? {
+    volume: parsed.volume,
+    muted: parsed.muted,
+    previousVolume: parsed.volume,
+  };
+
+  let next = { ...prevState };
+  if (op === 'mute') {
+    if (!next.muted) next.previousVolume = next.volume;
+    next.muted = true;
+  } else if (op === 'unmute') {
+    next.muted = false;
+    next.volume = clampVol(next.previousVolume || next.volume || 80);
+  } else if (/^[+-]\d+$/.test(op)) {
+    next.muted = false;
+    next.volume = clampVol(next.volume + Number(op));
+    next.previousVolume = next.volume;
+  } else if (/^\d+$/.test(op)) {
+    next.muted = false;
+    next.volume = clampVol(Number(op));
+    next.previousVolume = next.volume;
+  }
+
+  chatVolumeFallback.set(key, next);
+  return { volume: next.volume, muted: next.muted };
 }
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
@@ -110,15 +163,15 @@ function mainKeyboard(): InlineMarkup {
     inline_keyboard: [
       [
         { text: sc('🎵 Play Music'), callback_data: 'menu:play', style: 'success' },
-        { text: sc('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
       ],
       [
+        { text: sc('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
         { text: sc('🎤 Auto Live Join'), callback_data: 'menu:live', style: 'success' },
-        { text: sc('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: sc('📊 Now Playing'), callback_data: 'menu:nowplaying', style: 'primary' },
         { text: sc('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
+        { text: sc('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: sc('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },
@@ -164,6 +217,11 @@ function volumeKeyboard(): InlineMarkup {
       [
         { text: '➖ 20%', callback_data: 'vol:-20', style: 'danger' },
         { text: '➕ 20%', callback_data: 'vol:+20', style: 'success' },
+      ],
+      [
+        { text: '🔊 100%', callback_data: 'vol:100', style: 'primary' },
+        { text: '🔥 150%', callback_data: 'vol:150', style: 'success' },
+        { text: '🚀 200%', callback_data: 'vol:200', style: 'success' },
       ],
       [
         { text: sc('🔇 Mute'), callback_data: 'vol:mute', style: 'danger' },
@@ -553,7 +611,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             '',
             '2️⃣ Instant Play By Song Name Or Link:',
             '   Send: /play Faded Alan Walker',
-            '   Or paste a YouTube / SoundCloud / .mp3 link directly.',
+            '   Or paste a song name or YouTube / SoundCloud / .mp3 link directly.',
             '',
             '3️⃣ Upload / Forward Audio:',
             '   Send or forward any MP3 / Voice / Audio file to this chat.',
@@ -562,12 +620,18 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             .filter(Boolean)
             .join('\n'),
         );
-        await tgCall(botToken, 'editMessageText', {
-          chat_id: chatId,
-          message_id: msgId,
-          text: guideText,
-          reply_markup: playGuideKeyboard(),
-        });
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          cq.message?.chat.type || 'private',
+          guideText,
+          playGuideKeyboard(),
+          TELEGRAM_EFFECTS.fire,
+          [
+            `${sc('🎵 Opening Music Set...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${sc('🔥 Ready For Music Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+          ],
+        );
       } else if (data.startsWith('pick:')) {
         const rawRef = data.slice(5);
         const source = rawRef.startsWith('yt:') ? `https://www.youtube.com/watch?v=${rawRef.slice(3)}` : rawRef;
@@ -618,38 +682,47 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           text,
           reply_markup: playerKeyboard(d.status === 'playing'),
         });
-      } else if (data === 'menu:volume' || data.startsWith('vol:')) {
-        let vol = 80;
-        let muted = false;
-        if (data.startsWith('vol:')) {
-          const op = data.slice(4);
-          const vRes = await callAudioBackend('/volume/adjust', { chat_id: chatId, action: op });
-          await tgCall(botToken, 'answerCallbackQuery', {
-            callback_query_id: cq.id,
-            text: sc(vRes.ok ? `Volume updated (${op})` : 'Preview mode (Audio Worker not linked)'),
-          });
-          if (vRes.ok && vRes.data) {
-            vol = Number(vRes.data.volume ?? 80);
-            muted = Boolean(vRes.data.muted);
-          } else {
-            muted = op === 'mute';
-            if (op === '+10') vol = 90;
-            if (op === '+20') vol = 100;
-            if (op === '-10') vol = 70;
-            if (op === '-20') vol = 60;
-          }
-        } else {
-          await tgCall(botToken, 'answerCallbackQuery', { callback_query_id: cq.id });
-          const vRes = await callAudioBackend(`/volume/status?chat_id=${chatId}`, {}, 'GET');
-          if (vRes.ok && vRes.data) {
-            vol = Number(vRes.data.volume ?? 80);
-            muted = Boolean(vRes.data.muted);
-          }
-        }
+      } else if (data === 'menu:volume') {
+        await tgCall(botToken, 'answerCallbackQuery', { callback_query_id: cq.id });
+        const vRes = await callAudioBackend(`/volume/status?chat_id=${chatId}`, {}, 'GET');
+        const fallback = chatVolumeFallback.get(String(chatId)) ?? { volume: 80, muted: false };
+        const vol = vRes.ok && vRes.data ? clampVol(Number(vRes.data.volume ?? 80)) : fallback.volume;
+        const muted = vRes.ok && vRes.data ? Boolean(vRes.data.muted) : fallback.muted;
+        const volText = sc(
+          `🎚️ Volume Control\n\n<  ${muted ? '🔇 Muted' : `🔊 ${vol}%`}  >\n\nRange: 10% – 200% (FFmpeg Real-Time Gain)${hasWorker ? '' : '\n(Preview slider works 10%–200% · Link Audio Worker for live boost)'}`,
+        );
+        await sendEffectMessage(
+          botToken,
+          chatId,
+          cq.message?.chat.type || 'private',
+          volText,
+          volumeKeyboard(),
+          TELEGRAM_EFFECTS.fire,
+          [
+            `${sc('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${sc('🔥 Boosting Range 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+          ],
+        );
+      } else if (data.startsWith('vol:')) {
+        const op = data.slice(4);
+        const isNumericPreset = /^\d+$/.test(op);
+        const vRes = isNumericPreset
+          ? await callAudioBackend('/volume/set', { chat_id: chatId, volume: clampVol(Number(op)) })
+          : await callAudioBackend('/volume/adjust', { chat_id: chatId, action: op });
+        const nextVol =
+          vRes.ok && vRes.data
+            ? { volume: clampVol(Number(vRes.data.volume ?? 80)), muted: Boolean(vRes.data.muted) }
+            : applyFallbackVolume(chatId, op, cq.message?.text);
+        await tgCall(botToken, 'answerCallbackQuery', {
+          callback_query_id: cq.id,
+          text: sc(nextVol.muted ? 'Audio Muted' : `Volume: ${nextVol.volume}% (10%–200%)`),
+        });
         await tgCall(botToken, 'editMessageText', {
           chat_id: chatId,
           message_id: msgId,
-          text: sc(`🎚️ Volume Control\n\n<  ${muted ? '🔇 Muted' : `🔊 ${vol}%`}  >\n\nRange: 10% – 200%${hasWorker ? '' : '\n(⚠️ Link Audio Worker for live volume)'}`),
+          text: sc(
+            `🎚️ Volume Control\n\n<  ${nextVol.muted ? '🔇 Muted' : `🔊 ${nextVol.volume}%`}  >\n\nRange: 10% – 200% (FFmpeg Real-Time Gain)${hasWorker ? '' : '\n(Preview slider works 10%–200% · Link Audio Worker for live boost)'}`,
+          ),
           reply_markup: volumeKeyboard(),
         });
       } else if (data.startsWith('player:')) {
@@ -777,8 +850,8 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           mainKeyboard(),
           TELEGRAM_EFFECTS.confetti,
           [
-            `${sc('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${sc('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            '▁▂▃▄▅▆▇ ▰▱▱▱▱',
+            '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰',
           ],
         );
       } else if (cmd === '/help') {
@@ -827,7 +900,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             chatType,
             sc('🔍 Usage: /search <song name>\nExample: /search Kesariya Arijit Singh'),
             playGuideKeyboard(),
-            TELEGRAM_EFFECTS.thumbsUp,
+            TELEGRAM_EFFECTS.fire,
           );
         } else {
           const sRes = await callAudioBackend('/player/search', { query: arg, limit: 5 });
@@ -843,7 +916,11 @@ export default async function handler(req: VercelReq, res: VercelRes) {
                 ? sc(`❌ No tracks found for "${arg}". Try /play ${arg} or send a direct URL.`)
                 : `${sc('🔍 Song Search')}\n\n${getWorkerDiagnosticText('Music Search')}`,
               playGuideKeyboard(),
-              sRes.configured ? TELEGRAM_EFFECTS.thumbsDown : TELEGRAM_EFFECTS.thumbsUp,
+              TELEGRAM_EFFECTS.fire,
+              [
+                `${sc('🔍 Searching Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+                `${sc('🔥 Preparing Results...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+              ],
             );
           } else {
             const buttons: InlineButton[][] = results.slice(0, 5).map((item, idx) => {
@@ -858,11 +935,22 @@ export default async function handler(req: VercelReq, res: VercelRes) {
               chatType,
               sc(`🔍 Select Music For: ${arg}\n\nTap any song below to play it in Live Voice Chat:`),
               { inline_keyboard: buttons },
-              TELEGRAM_EFFECTS.thumbsUp,
+              TELEGRAM_EFFECTS.fire,
+              [
+                `${sc('🔍 Searching Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+                `${sc('🔥 Matching Top 5 Songs...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+              ],
             );
           }
         }
-      } else if (cmd === '/play' || msg.audio || msg.voice || audioDoc || isMediaUrl(rawText)) {
+      } else if (
+        cmd === '/play' ||
+        msg.audio ||
+        msg.voice ||
+        audioDoc ||
+        isMediaUrl(rawText) ||
+        (rawText.length > 0 && !rawText.startsWith('/'))
+      ) {
         const source = msg.audio
           ? `tg_file:${msg.audio.file_id}`
           : msg.voice
@@ -879,7 +967,11 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             chatType,
             sc('🎵 Send /play <song name or URL>, /search <song name>, or upload an MP3/Audio file.'),
             playGuideKeyboard(),
-            TELEGRAM_EFFECTS.thumbsUp,
+            TELEGRAM_EFFECTS.fire,
+            [
+              `${sc('🎵 Opening Music Set...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+              `${sc('🔥 Ready To Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            ],
           );
         } else {
           const pRes = await callAudioBackend('/player/play', {
@@ -899,23 +991,34 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             TELEGRAM_EFFECTS.fire,
             [
               `${sc('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-              `${sc('🎚️ Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+              `${sc('🔥 Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
             ],
           );
         }
       } else if (cmd === '/volume') {
-        const volNum = Number(arg);
-        const vRes = Number.isFinite(volNum)
-          ? await callAudioBackend('/volume/set', { chat_id: chatId, volume: Math.min(200, Math.max(10, volNum)) })
+        const cleanedArg = arg.replace('%', '').trim();
+        const hasVolArg = cleanedArg.length > 0 && Number.isFinite(Number(cleanedArg));
+        const targetVol = hasVolArg ? clampVol(Number(cleanedArg)) : undefined;
+        const vRes = targetVol !== undefined
+          ? await callAudioBackend('/volume/set', { chat_id: chatId, volume: targetVol })
           : await callAudioBackend(`/volume/status?chat_id=${chatId}`, {}, 'GET');
-        const vol = vRes.ok && vRes.data ? Number(vRes.data.volume ?? 80) : (Number.isFinite(volNum) ? volNum : 80);
+        const nextVol =
+          vRes.ok && vRes.data
+            ? { volume: clampVol(Number(vRes.data.volume ?? 80)), muted: Boolean(vRes.data.muted) }
+            : targetVol !== undefined
+              ? applyFallbackVolume(chatId, String(targetVol))
+              : (chatVolumeFallback.get(String(chatId)) ?? { volume: 80, muted: false });
         await sendEffectMessage(
           botToken,
           chatId,
           chatType,
-          sc(`🎚️ Volume Control\n\n<  🔊 ${vol}%  >`),
+          sc(`🎚️ Volume Control\n\n<  ${nextVol.muted ? '🔇 Muted' : `🔊 ${nextVol.volume}%`}  >\n\nRange: 10% – 200% (FFmpeg Real-Time Gain)`),
           volumeKeyboard(),
-          TELEGRAM_EFFECTS.thumbsUp,
+          TELEGRAM_EFFECTS.fire,
+          [
+            `${sc('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${sc('🔥 Volume Range: 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+          ],
         );
       } else if (cmd === '/ping') {
         const t0 = Date.now();

@@ -41,11 +41,14 @@ function handleVolumeAction(PDO $pdo, array $config, int|string $chatId, int $gr
     ]);
 
     $display = $muted ? '🔇 MUTED' : "🔊 {$vol}%";
-    $text = "🎚️ 𝐕𝐎𝐋𝐔𝐌𝐄 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n<  {$display}  >\n\nRange: 10% – 200% (Per-Group Memory Saved)";
+    $text = toSmallCaps("🎚️ Volume Control\n\n<  {$display}  >\n\nRange: 10% – 200% (Per-Group Memory Saved)");
     $markup = buildVolumeKeyboard();
     if ($editMessageId !== null) {
         editTelegramMessage($config, $chatId, $editMessageId, $text, $markup);
     } else {
-        sendTelegramMessage($config, $chatId, $text, $markup);
+        sendTelegramEffectMessage($config, $chatId, 'private', $text, $markup, '5104841245755180586', [
+            toSmallCaps('🎚️ Opening Volume Control...') . "\n▁▂▃▄▅▆▇  ▰▱▱▱▱",
+            toSmallCaps('🔥 Volume Range: 10% – 200%...') . "\n▇▆▅▄▃▂▁  ▰▰▰▰▰",
+        ]);
     }
 }

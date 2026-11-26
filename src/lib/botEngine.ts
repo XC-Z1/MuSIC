@@ -221,15 +221,15 @@ export function buildWelcomeMessage(): { text: string; inlineKeyboard: BotInline
   const inlineKeyboard: BotInlineButton[][] = [
     [
       { text: toSmallCaps('🎵 Play Music'), callbackData: 'cmd:play_prompt', style: 'success' },
-      { text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player', style: 'primary' },
     ],
     [
+      { text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player', style: 'primary' },
       { text: toSmallCaps('🎤 Auto Live Join'), callbackData: 'cmd:live_panel', style: 'success' },
-      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account', style: 'primary' },
     ],
     [
       { text: toSmallCaps('📊 Now Playing'), callbackData: 'cmd:nowplaying', style: 'primary' },
       { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume', style: 'primary' },
+      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account', style: 'primary' },
     ],
     [
       { text: toSmallCaps('📚 Help & Commands'), callbackData: 'cmd:help', style: 'primary' },
@@ -332,6 +332,11 @@ export function buildVolumeMessage(state: BotSystemState): { text: string; inlin
     [
       { text: '➖ 20%', callbackData: 'vol:-20', style: 'danger' },
       { text: '➕ 20%', callbackData: 'vol:+20', style: 'success' },
+    ],
+    [
+      { text: '🔊 100%', callbackData: 'vol:100', style: 'primary' },
+      { text: '🔥 150%', callbackData: 'vol:150', style: 'success' },
+      { text: '🚀 200%', callbackData: 'vol:200', style: 'success' },
     ],
     [
       { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute', style: 'danger' },
@@ -646,8 +651,8 @@ export function processBotInput(
           kind: 'welcome',
           effectBadge: '🎉 Confetti Effect',
           animationFrames: [
-            `${toSmallCaps('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            '▁▂▃▄▅▆▇ ▰▱▱▱▱',
+            '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰',
             w.text,
           ],
         }),
@@ -673,7 +678,12 @@ export function processBotInput(
         makeMessage('bot', v.text, {
           inlineKeyboard: v.inlineKeyboard,
           kind: 'volume',
-          effectBadge: '👍 Thumbs Up Effect',
+          effectBadge: '🔥 Fire Effect',
+          animationFrames: [
+            `${toSmallCaps('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🔥 Volume Range: 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            v.text,
+          ],
         }),
       );
       return state;
@@ -728,19 +738,21 @@ export function processBotInput(
     }
 
     if (input === 'cmd:play_prompt') {
+      const guide = toSmallCaps('🎵 Send /play <song name or audio URL>, /search <song>, or tap Quick Demo Play below.');
       state.messages.push(
-        makeMessage(
-          'bot',
-          toSmallCaps('🎵 Send /play <song name or audio URL>, /search <song>, or tap Quick Demo Play below.'),
-          {
-            kind: 'info',
-            effectBadge: '🔥 Fire Effect',
-            inlineKeyboard: [
-              [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo', style: 'success' }],
-              [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
-            ],
-          },
-        ),
+        makeMessage('bot', guide, {
+          kind: 'info',
+          effectBadge: '🔥 Fire Effect',
+          animationFrames: [
+            `${toSmallCaps('🎵 Opening Music Set...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🔥 Ready To Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            guide,
+          ],
+          inlineKeyboard: [
+            [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo', style: 'success' }],
+            [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
+          ],
+        }),
       );
       return state;
     }
@@ -800,20 +812,22 @@ export function processBotInput(
       } else if (action === 'unmute') {
         state.playback.muted = false;
         state.playback.volume = clampVolume(state.playback.previousVolume || state.playback.volume);
-      } else {
+      } else if (/^[+-]\d+$/.test(action)) {
         const delta = Number(action);
-        if (Number.isFinite(delta)) {
-          state.playback.muted = false;
-          state.playback.volume = clampVolume(state.playback.volume + delta);
-          state.playback.previousVolume = state.playback.volume;
-        }
+        state.playback.muted = false;
+        state.playback.volume = clampVolume(state.playback.volume + delta);
+        state.playback.previousVolume = state.playback.volume;
+      } else if (/^\d+$/.test(action)) {
+        state.playback.muted = false;
+        state.playback.volume = clampVolume(Number(action));
+        state.playback.previousVolume = state.playback.volume;
       }
       const v = buildVolumeMessage(state);
       state.messages.push(
         makeMessage('bot', v.text, {
           inlineKeyboard: v.inlineKeyboard,
           kind: 'volume',
-          effectBadge: action === 'mute' ? '👎 Alert Effect' : '👍 Thumbs Up Effect',
+          effectBadge: action === 'mute' ? '👎 Alert Effect' : '🔥 Fire Effect',
         }),
       );
       return state;
@@ -962,8 +976,8 @@ export function processBotInput(
           kind: 'welcome',
           effectBadge: '🎉 Confetti Effect',
           animationFrames: [
-            `${toSmallCaps('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            '▁▂▃▄▅▆▇ ▰▱▱▱▱',
+            '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰',
             w.text,
           ],
         }),
@@ -1179,7 +1193,7 @@ export function processBotInput(
       }
       const parsedVol = Number(arg.replace('%', ''));
       if (!Number.isFinite(parsedVol)) {
-        state.messages.push(makeMessage('bot', '❌ Volume must be between 10 and 200.', { kind: 'error' }));
+        state.messages.push(makeMessage('bot', '❌ Volume must be between 10 and 200.', { kind: 'error', effectBadge: '👎 Alert Effect' }));
         return state;
       }
       state.playback.muted = false;
@@ -1190,7 +1204,12 @@ export function processBotInput(
         makeMessage('bot', v.text, {
           inlineKeyboard: v.inlineKeyboard,
           kind: 'volume',
-          effectBadge: '👍 Thumbs Up Effect',
+          effectBadge: '🔥 Fire Effect',
+          animationFrames: [
+            `${toSmallCaps('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+            `${toSmallCaps('🔥 Volume Range: 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+            v.text,
+          ],
         }),
       );
       return state;

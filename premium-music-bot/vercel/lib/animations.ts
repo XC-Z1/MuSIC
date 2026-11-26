@@ -12,8 +12,8 @@ export const TELEGRAM_EFFECTS = {
 
 export const EQUALIZER_PRESETS = {
   welcome: [
-    `${toSmallCaps('⚡ Booting Music Spam Bot...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+    '▁▂▃▄▅▆▇ ▰▱▱▱▱',
+    '▁▂▃▄▅▆▇ ▰▱▱▱▱ → ▇▆▅▄▃▂▁ ▰▰▰▰▰',
   ],
   joinLive: [
     `${toSmallCaps('🎤 Connecting Voice Chat...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
@@ -21,7 +21,15 @@ export const EQUALIZER_PRESETS = {
   ],
   playMusic: [
     `${toSmallCaps('🎵 Fetching Audio...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🎚️ Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+    `${toSmallCaps('🔥 Tuning FFmpeg Stream...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+  ],
+  volume: [
+    `${toSmallCaps('🎚️ Opening Volume Control...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+    `${toSmallCaps('🔥 Volume Range: 10% – 200%...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
+  ],
+  searchMusic: [
+    `${toSmallCaps('🔍 Searching Track...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
+    `${toSmallCaps('🔥 Matching Songs...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
   ],
 };
 

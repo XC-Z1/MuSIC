@@ -318,7 +318,7 @@ export const LiveControlDeck: React.FC<LiveControlDeckProps> = ({
             />
           </div>
 
-          <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+          <div className="grid grid-cols-4 gap-2">
             {['-20', '-10', '+10', '+20'].map((step) => (
               <button
                 key={step}
@@ -330,6 +330,22 @@ export const LiveControlDeck: React.FC<LiveControlDeckProps> = ({
                 {step}%
               </button>
             ))}
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onSendCommand('vol:150', true)}
+              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 py-1.5 font-mono text-xs text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+            >
+              150%
+            </button>
+            <button
+              type="button"
+              disabled={busy}
+              onClick={() => onSendCommand('vol:200', true)}
+              className="rounded-lg border border-emerald-500/30 bg-emerald-500/10 py-1.5 font-mono text-xs text-emerald-300 hover:bg-emerald-500/20 cursor-pointer"
+            >
+              200%
+            </button>
             <button
               type="button"
               disabled={busy}

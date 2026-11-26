@@ -124,15 +124,15 @@ export const KEYBOARDS = {
     inline_keyboard: [
       [
         { text: toSmallCaps('🎵 Play Music'), callback_data: 'menu:play', style: 'success' },
-        { text: toSmallCaps('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
       ],
       [
+        { text: toSmallCaps('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
         { text: toSmallCaps('🎤 Auto Live Join'), callback_data: 'menu:live', style: 'success' },
-        { text: toSmallCaps('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: toSmallCaps('📊 Now Playing'), callback_data: 'menu:nowplaying', style: 'primary' },
         { text: toSmallCaps('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
+        { text: toSmallCaps('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
         { text: toSmallCaps('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },
@@ -172,6 +172,11 @@ export const KEYBOARDS = {
       [
         { text: '➖ 20%', callback_data: 'vol:-20', style: 'danger' },
         { text: '➕ 20%', callback_data: 'vol:+20', style: 'success' },
+      ],
+      [
+        { text: '🔊 100%', callback_data: 'vol:100', style: 'primary' },
+        { text: '🔥 150%', callback_data: 'vol:150', style: 'success' },
+        { text: '🚀 200%', callback_data: 'vol:200', style: 'success' },
       ],
       [
         { text: toSmallCaps('🔇 Mute'), callback_data: 'vol:mute', style: 'danger' },
