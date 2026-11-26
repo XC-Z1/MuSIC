@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Megaphone, RefreshCw, ShieldAlert } from 'lucide-react';
-import type { BotSystemState } from '../lib/botEngine';
+import { formatBangladeshDateTime, type BotSystemState } from '../lib/botEngine';
 
 interface OwnerDashboardProps {
   state: BotSystemState;
@@ -70,7 +70,7 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
               }`}
             >
               <ShieldAlert className="h-4 w-4" aria-hidden="true" />
-              {state.maintenanceMode ? 'Maintenance: ON (Disable)' : 'Enable Maintenance Mode'}
+              {state.maintenanceMode ? 'Bot OFF (Maintenance ON) — Turn Bot ON' : 'Bot ON — Turn Bot OFF (Maintenance)'}
             </button>
 
             <button
@@ -169,44 +169,50 @@ export const OwnerDashboard: React.FC<OwnerDashboardProps> = ({
               <thead className="border-b border-white/10 text-slate-400">
                 <tr>
                   <th className="px-5 py-3 font-medium">User</th>
-                  <th className="px-4 py-3 font-medium">Role</th>
+                  <th className="px-4 py-3 font-medium">Joined (BD 12h)</th>
                   <th className="px-4 py-3 font-medium text-right">Plays</th>
-                  <th className="px-5 py-3 font-medium text-right">Access</th>
+                  <th className="px-5 py-3 font-medium text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-white/10">
-                {state.users.map((u) => (
-                  <tr key={u.id} className="hover:bg-white/[0.02]">
-                    <td className="px-5 py-3">
-                      <p className="font-medium text-slate-200">{u.name}</p>
-                      <p className="font-mono text-[11px] text-slate-500">{u.username}</p>
-                    </td>
-                    <td className="px-4 py-3 uppercase font-mono text-[11px] text-slate-300">
-                      {u.role}
-                    </td>
-                    <td className="px-4 py-3 text-right font-mono text-slate-300 tabular-nums">
-                      {u.requestsCount}
-                    </td>
-                    <td className="px-5 py-3 text-right">
-                      {u.role === 'owner' ? (
-                        <span className="text-slate-500">Protected</span>
-                      ) : (
-                        <button
-                          type="button"
-                          disabled={busy}
-                          onClick={() => onOwnerAction('toggle_user_ban', { userId: u.id })}
-                          className={`rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer ${
-                            u.banned
-                              ? 'bg-rose-500/15 text-rose-400'
-                              : 'bg-white/5 text-slate-300 hover:bg-white/10'
-                          }`}
-                        >
-                          {u.banned ? 'Banned' : 'Active'}
-                        </button>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {state.users.map((u) => {
+                  const bd = formatBangladeshDateTime(u.joinedAt);
+                  return (
+                    <tr key={u.id} className="hover:bg-white/[0.02]">
+                      <td className="px-5 py-3">
+                        <p className="font-medium text-slate-200">{u.name}</p>
+                        <p className="font-mono text-[11px] text-slate-500">
+                          {u.username} · ID {u.chatId}
+                        </p>
+                      </td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-slate-300">
+                        <div>{bd.dateStr}</div>
+                        <div className="text-sky-300">{bd.timeStr}</div>
+                      </td>
+                      <td className="px-4 py-3 text-right font-mono text-slate-300 tabular-nums">
+                        {u.requestsCount}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {u.role === 'owner' ? (
+                          <span className="text-amber-300 font-medium">Admin</span>
+                        ) : (
+                          <button
+                            type="button"
+                            disabled={busy}
+                            onClick={() => onOwnerAction('toggle_user_ban', { userId: u.id })}
+                            className={`rounded-md px-2.5 py-1 text-xs font-medium cursor-pointer ${
+                              u.banned
+                                ? 'bg-rose-500/20 text-rose-300 hover:bg-rose-500/30'
+                                : 'bg-emerald-500/15 text-emerald-300 hover:bg-rose-500/20 hover:text-rose-300'
+                            }`}
+                          >
+                            {u.banned ? 'Blocked (Unblock)' : 'Active (Block)'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

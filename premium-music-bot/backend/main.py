@@ -13,6 +13,7 @@ from pytgcalls import PyTgCalls
 
 from account_client import PersonalAccountClient
 from audio_stream import AudioStreamProcessor
+from bot_store import BotStateStore
 from music_player import MusicPlayerController
 from session_manager import SessionManager
 from voice_chat import VoiceChatManager
@@ -22,6 +23,7 @@ load_dotenv(os.path.join(os.path.dirname(__file__), "..", ".env"))
 
 API_SECRET = os.getenv("AUDIO_BACKEND_API_SECRET", "")
 MUSIC_DIR = os.path.join(os.path.dirname(__file__), "..", "storage", "music")
+BOT_DB_PATH = os.path.join(os.path.dirname(__file__), "data", "bot_state.db")
 
 account = PersonalAccountClient()
 session_mgr = SessionManager(account, max_retries=3)
@@ -30,6 +32,7 @@ voice_mgr: VoiceChatManager | None = None
 processor = AudioStreamProcessor(MUSIC_DIR)
 volumes = VolumeController(default_volume=80)
 player: MusicPlayerController | None = None
+bot_store = BotStateStore(BOT_DB_PATH)
 
 
 @asynccontextmanager
@@ -369,3 +372,88 @@ async def volume_update(payload: VolumePayload):
 @app.get("/volume/status", dependencies=[Depends(verify_hmac_auth)])
 async def volume_status(chat_id: int = 0):
     return volumes.get_state(_target_chat(chat_id))
+
+
+class TrackUserPayload(BaseModel):
+    user_id: int
+    chat_id: int
+    first_name: str = ""
+    last_name: str = ""
+    username: str = ""
+
+
+class MaintenancePayload(BaseModel):
+    enabled: bool
+
+
+class AdminUserActionPayload(BaseModel):
+    user_id: int
+    blocked: bool = True
+
+
+class ClaimOwnerPayload(BaseModel):
+    user_id: int
+
+
+class RecordPlayPayload(BaseModel):
+    user_id: int | None = None
+
+
+@app.get("/bot/config", dependencies=[Depends(verify_hmac_auth)])
+async def bot_config():
+    return bot_store.get_config()
+
+
+@app.post("/bot/track-user", dependencies=[Depends(verify_hmac_auth)])
+async def bot_track_user(payload: TrackUserPayload):
+    return bot_store.track_user(
+        user_id=payload.user_id,
+        chat_id=payload.chat_id,
+        first_name=payload.first_name,
+        last_name=payload.last_name,
+        username=payload.username,
+    )
+
+
+@app.post("/bot/admin/claim", dependencies=[Depends(verify_hmac_auth)])
+async def bot_admin_claim(payload: ClaimOwnerPayload):
+    try:
+        return bot_store.claim_owner(payload.user_id)
+    except ValueError as exc:
+        raise HTTPException(status_code=403, detail=str(exc)) from exc
+
+
+@app.post("/bot/admin/maintenance", dependencies=[Depends(verify_hmac_auth)])
+async def bot_admin_maintenance(payload: MaintenancePayload):
+    return bot_store.set_maintenance(payload.enabled)
+
+
+@app.get("/bot/admin/users", dependencies=[Depends(verify_hmac_auth)])
+async def bot_admin_users(page: int = 0, limit: int = 5):
+    return bot_store.list_users(page=page, limit=limit)
+
+
+@app.get("/bot/admin/user/{user_id}", dependencies=[Depends(verify_hmac_auth)])
+async def bot_admin_get_user(user_id: int):
+    user = bot_store.get_user(user_id)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user": user, **bot_store.get_config()}
+
+
+@app.post("/bot/admin/block", dependencies=[Depends(verify_hmac_auth)])
+async def bot_admin_block(payload: AdminUserActionPayload):
+    user = bot_store.set_user_blocked(payload.user_id, payload.blocked)
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    return {"user": user, **bot_store.get_config()}
+
+
+@app.get("/bot/admin/broadcast-targets", dependencies=[Depends(verify_hmac_auth)])
+async def bot_admin_broadcast_targets():
+    return {"targets": bot_store.get_broadcast_targets()}
+
+
+@app.post("/bot/stats/play", dependencies=[Depends(verify_hmac_auth)])
+async def bot_stats_play(payload: RecordPlayPayload):
+    return bot_store.record_play(payload.user_id)

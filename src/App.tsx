@@ -14,6 +14,7 @@ export default function App() {
   const [files, setFiles] = useState<ProjectFileItem[]>([]);
   const [filesLoading, setFilesLoading] = useState(true);
   const [busy, setBusy] = useState(false);
+  const [viewerRole, setViewerRole] = useState<'owner' | 'member'>('owner');
 
   const loadState = useCallback(async () => {
     try {
@@ -73,7 +74,7 @@ export default function App() {
       const res = await fetch('/api/bot/command', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ input, isCallback }),
+        body: JSON.stringify({ input, isCallback, senderRole: viewerRole }),
       });
       if (res.ok) {
         const json = (await res.json()) as { ok: boolean; state: BotSystemState };
@@ -218,6 +219,9 @@ export default function App() {
               <div className="lg:col-span-6">
                 <TelegramSimulator
                   state={botState}
+                  viewerRole={viewerRole}
+                  onToggleViewerRole={() => setViewerRole((prev) => (prev === 'owner' ? 'member' : 'owner'))}
+                  onSimulateNewUser={() => handleOwnerAction('simulate_new_user')}
                   onSendCommand={handleSendCommand}
                   onReset={() => handleOwnerAction('reset')}
                   busy={busy}

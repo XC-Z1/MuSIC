@@ -8,6 +8,7 @@ import {
   clampVolume,
   createInitialBotState,
   processBotInput,
+  simulateNewUserJoin,
   tickPlayback,
   type BotSystemState,
 } from './src/lib/botEngine';
@@ -72,14 +73,19 @@ app.post('/api/bot/command', (req, res) => {
 
   const input = typeof req.body?.input === 'string' ? req.body.input : '';
   const isCallback = Boolean(req.body?.isCallback);
-  const senderUsername = typeof req.body?.senderUsername === 'string' ? req.body.senderUsername : '@owner_admin';
+  const senderRole = req.body?.senderRole === 'member' ? 'member' : 'owner';
+  const senderUsername = typeof req.body?.senderUsername === 'string'
+    ? req.body.senderUsername
+    : senderRole === 'member'
+      ? '@nadia_k'
+      : '@owner_admin';
 
   if (!input.trim()) {
     res.status(400).json({ ok: false, error: 'Command or callback input is required.' });
     return;
   }
 
-  botState = processBotInput(botState, input, { isCallback, senderUsername });
+  botState = processBotInput(botState, input, { isCallback, senderUsername, senderRole });
   res.json({ ok: true, state: botState });
 });
 
@@ -122,6 +128,8 @@ app.post('/api/bot/owner-action', (req, res) => {
       return;
     }
     botState = processBotInput(botState, `/broadcast ${msg}`);
+  } else if (action === 'simulate_new_user') {
+    botState = simulateNewUserJoin(botState);
   } else if (action === 'reset') {
     botState = createInitialBotState();
   } else {

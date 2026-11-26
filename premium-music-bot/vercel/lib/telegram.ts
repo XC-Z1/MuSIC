@@ -9,17 +9,50 @@ export interface InlineKeyboardMarkup {
   inline_keyboard: InlineKeyboardButton[][];
 }
 
-interface TelegramApiResult {
+export interface TelegramApiResult {
   ok: boolean;
-  result?: { message_id?: number };
+  result?: any;
   description?: string;
 }
+
+export const DIVIDER = '━━━━━━━━━━━━━━━━━━━━';
 
 const SMALL_CAPS_MAP: Record<string, string> = {
   a: 'ᴀ', b: 'ʙ', c: 'ᴄ', d: 'ᴅ', e: 'ᴇ', f: 'ғ', g: 'ɢ', h: 'ʜ', i: 'ɪ',
   j: 'ᴊ', k: 'ᴋ', l: 'ʟ', m: 'ᴍ', n: 'ɴ', o: 'ᴏ', p: 'ᴘ', q: 'ǫ', r: 'ʀ',
   s: 's', t: 'ᴛ', u: 'ᴜ', v: 'ᴠ', w: 'ᴡ', x: 'x', y: 'ʏ', z: 'ᴢ',
 };
+
+export function escapeHtml(input: string): string {
+  return input
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+export function formatBangladeshDateTime(dateInput: Date | string | number = new Date()): {
+  dateStr: string;
+  timeStr: string;
+  fullStr: string;
+} {
+  const date = dateInput instanceof Date ? dateInput : new Date(dateInput);
+  const safeDate = Number.isNaN(date.getTime()) ? new Date() : date;
+  const dateStr = new Intl.DateTimeFormat('en-GB', {
+    timeZone: 'Asia/Dhaka',
+    weekday: 'short',
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(safeDate);
+  const timeStr = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Dhaka',
+    hour: '2-digit',
+    minute: '2-digit',
+    second: '2-digit',
+    hour12: true,
+  }).format(safeDate);
+  return { dateStr, timeStr, fullStr: `${dateStr} · ${timeStr} (BD)` };
+}
 
 export function toSmallCaps(input: string): string {
   return input
@@ -31,6 +64,7 @@ export function toSmallCaps(input: string): string {
         token.startsWith('@') ||
         token.startsWith('http://') ||
         token.startsWith('https://') ||
+        token.startsWith('tg://') ||
         /^[A-Z0-9_]{3,}$/.test(token)
       ) {
         return token;
@@ -50,7 +84,7 @@ function getBotToken(): string {
   return token;
 }
 
-async function telegramRequest(method: string, body: Record<string, unknown>): Promise<TelegramApiResult> {
+export async function telegramRequest(method: string, body: Record<string, unknown>): Promise<TelegramApiResult> {
   const token = getBotToken();
   const res = await fetch(`https://api.telegram.org/bot${token}/${method}`, {
     method: 'POST',
@@ -64,10 +98,7 @@ export function sendChatAction(
   chatId: number | string,
   action: 'typing' | 'record_voice' | 'upload_voice' = 'typing',
 ): Promise<TelegramApiResult> {
-  return telegramRequest('sendChatAction', {
-    chat_id: chatId,
-    action,
-  });
+  return telegramRequest('sendChatAction', { chat_id: chatId, action });
 }
 
 export async function sendMessage(
@@ -79,32 +110,66 @@ export async function sendMessage(
   const basePayload: Record<string, unknown> = {
     chat_id: chatId,
     text,
+    parse_mode: 'HTML',
     disable_web_page_preview: true,
     ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
   };
-  const res = await telegramRequest(
+  let res = await telegramRequest(
     'sendMessage',
     messageEffectId ? { ...basePayload, message_effect_id: messageEffectId } : basePayload,
   );
   if (!res.ok && messageEffectId) {
-    return telegramRequest('sendMessage', basePayload);
+    res = await telegramRequest('sendMessage', basePayload);
+  }
+  if (!res.ok) {
+    res = await telegramRequest('sendMessage', {
+      ...basePayload,
+      parse_mode: undefined,
+      text: text.replace(/<[^>]+>/g, ''),
+    });
   }
   return res;
 }
 
-export function editMessageText(
+export async function sendPhoto(
+  chatId: number | string,
+  photo: string,
+  caption: string,
+  replyMarkup?: InlineKeyboardMarkup,
+): Promise<TelegramApiResult> {
+  return telegramRequest('sendPhoto', {
+    chat_id: chatId,
+    photo,
+    caption,
+    parse_mode: 'HTML',
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  });
+}
+
+export async function editMessageText(
   chatId: number | string,
   messageId: number,
   text: string,
   replyMarkup?: InlineKeyboardMarkup,
 ): Promise<TelegramApiResult> {
-  return telegramRequest('editMessageText', {
+  const res = await telegramRequest('editMessageText', {
     chat_id: chatId,
     message_id: messageId,
     text,
+    parse_mode: 'HTML',
     disable_web_page_preview: true,
     ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
   });
+  if (!res.ok) {
+    return telegramRequest('editMessageText', {
+      chat_id: chatId,
+      message_id: messageId,
+      text: text.replace(/<[^>]+>/g, ''),
+      disable_web_page_preview: true,
+      ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+    });
+  }
+  return res;
 }
 
 export function answerCallbackQuery(
@@ -120,8 +185,8 @@ export function answerCallbackQuery(
 }
 
 export const KEYBOARDS = {
-  mainMenu: (): InlineKeyboardMarkup => ({
-    inline_keyboard: [
+  mainMenu: (isAdmin = false): InlineKeyboardMarkup => {
+    const rows: InlineKeyboardButton[][] = [
       [
         { text: toSmallCaps('🎵 Play Music'), callback_data: 'menu:play', style: 'success' },
         { text: toSmallCaps('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
@@ -134,10 +199,36 @@ export const KEYBOARDS = {
         { text: toSmallCaps('📊 Now Playing'), callback_data: 'menu:nowplaying', style: 'primary' },
         { text: toSmallCaps('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
       ],
-      [
+    ];
+    if (isAdmin) {
+      rows.push([
         { text: toSmallCaps('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },
-        { text: toSmallCaps('👑 Bot Owner'), callback_data: 'menu:owner', style: 'primary' },
+        { text: toSmallCaps('👑 Admin Panel'), callback_data: 'menu:owner', style: 'danger' },
+      ]);
+    } else {
+      rows.push([{ text: toSmallCaps('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' }]);
+    }
+    return { inline_keyboard: rows };
+  },
+  adminPanel: (maintenanceMode: boolean): InlineKeyboardMarkup => ({
+    inline_keyboard: [
+      [
+        {
+          text: toSmallCaps(maintenanceMode ? '🟢 Turn Bot ON' : '🔴 Turn Bot OFF (Maint.)'),
+          callback_data: 'admin:toggle_maintenance',
+          style: maintenanceMode ? 'success' : 'danger',
+        },
+        { text: toSmallCaps('📊 System Status'), callback_data: 'menu:owner', style: 'primary' },
       ],
+      [
+        { text: toSmallCaps('👥 Users & Blocklist'), callback_data: 'admin:users:0', style: 'primary' },
+        { text: toSmallCaps('📢 Broadcast'), callback_data: 'admin:broadcast_prompt', style: 'success' },
+      ],
+      [
+        { text: toSmallCaps('🔍 Check User'), callback_data: 'admin:lookup_prompt', style: 'primary' },
+        { text: toSmallCaps('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
+      ],
+      [{ text: toSmallCaps('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' }],
     ],
   }),
   player: (isPlaying: boolean): InlineKeyboardMarkup => ({
