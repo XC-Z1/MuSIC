@@ -35,7 +35,7 @@ player: MusicPlayerController | None = None
 async def lifespan(_: FastAPI):
     global calls, voice_mgr, player
     try:
-        if account.enc_session:
+        if account.has_session_configured():
             await account.connect()
             calls = PyTgCalls(account.client)
             await calls.start()
@@ -51,6 +51,11 @@ async def lifespan(_: FastAPI):
 
 
 app = FastAPI(title="Telegram Personal Account Audio Streaming Backend", lifespan=lifespan)
+
+
+@app.get("/")
+async def root_liveness():
+    return {"ok": True, "service": "telestream-audio-worker", "connected": account.connected}
 
 
 async def verify_hmac_auth(

@@ -1,8 +1,15 @@
 import crypto from 'node:crypto';
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { ANIMATION_PRESETS, playAnimatedSequence } from '../lib/animations';
+import { TELEGRAM_EFFECTS, sendEffectMessage } from '../lib/animations';
 import { callAudioBackend } from '../lib/backendClient';
-import { KEYBOARDS, answerCallbackQuery, editMessageText, sendMessage, type InlineKeyboardMarkup } from '../lib/telegram';
+import {
+  KEYBOARDS,
+  answerCallbackQuery,
+  editMessageText,
+  sendMessage,
+  toSmallCaps,
+  type InlineKeyboardMarkup,
+} from '../lib/telegram';
 
 interface TelegramUpdate {
   message?: {
@@ -56,39 +63,46 @@ function isMediaUrl(text: string): boolean {
 }
 
 function getWorkerDiagnosticText(actionLabel?: string): string {
-  const hasApiCreds = Boolean(process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH);
+  const hasApiCreds = Boolean(
+    (process.env.TELEGRAM_API_ID || process.env.API_ID) &&
+    (process.env.TELEGRAM_API_HASH || process.env.API_HASH),
+  );
   const hasWorker = Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET);
-  return [
-    actionLabel ? `⚡ Action: ${actionLabel}` : '',
-    '🤖 Bot Webhook: ✅ Online (Vercel)',
-    `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (must also be in VPS .env)' : '⚪ Not set'}`,
-    `🖥️ VPS Audio Worker: ${hasWorker ? '✅ Linked' : '❌ Not Linked Yet'}`,
-    '',
-    hasWorker
-      ? 'VPS Audio Worker is linked. Tap Connect/Reconnect or check VPS logs if offline.'
-      : [
-          'ℹ️ Vercel serverless cannot hold a persistent MTProto Voice Chat stream directly.',
-          'To connect your Personal Account & stream music:',
-          '1️⃣ Run backend/main.py on a Python VPS (Pyrogram + PyTgCalls + FFmpeg)',
-          '2️⃣ Generate session on VPS: python3 account_client.py --login',
-          '3️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel Env Vars & Redeploy.',
-        ].join('\n'),
-  ]
-    .filter(Boolean)
-    .join('\n');
+  return toSmallCaps(
+    [
+      actionLabel ? `⚡ Action: ${actionLabel}` : '',
+      '🤖 Bot Webhook: ✅ Online (Vercel)',
+      `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (must also be in Audio Worker)' : '⚪ Not set'}`,
+      `🖥️ Audio Worker: ${hasWorker ? '✅ Linked' : '❌ Not Linked Yet'}`,
+      '',
+      hasWorker
+        ? 'Audio Worker is linked. Tap Connect/Reconnect or check worker logs.'
+        : [
+            'ℹ️ Vercel serverless cannot hold live MTProto Voice Chat streams alone.',
+            'No VPS needed — deploy backend/Dockerfile free on Koyeb/Render/HF Spaces:',
+            '1️⃣ Deploy premium-music-bot/backend via Docker on Render or Koyeb',
+            '2️⃣ Set API_ID, API_HASH, SESSION & AUDIO_BACKEND_API_SECRET there',
+            '3️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel & Redeploy.',
+          ].join('\n'),
+    ]
+      .filter(Boolean)
+      .join('\n'),
+  );
 }
 
-const WELCOME_TEXT = [
-  '🎧 𝐖𝐄𝐋𝐂𝐎𝐌𝐄 𝐓𝐎 𝐏𝐑𝐄𝐌𝐈𝐔𝐌 𝐌𝐔𝐒𝐈𝐂 𝐁𝐎𝐓',
-  '',
-  '🎶 Your Music, Your World!',
-  '✨ Premium Music Experience',
-  '⚡ Ultra Fast Performance',
-  '🎚️ Advanced Music Controls',
-  '🎤 Auto Live Join System',
-  '🎧 Personal Account Control',
-  '🔥 Smart Music Streaming',
-].join('\n');
+const WELCOME_TEXT = toSmallCaps(
+  [
+    '🎧 Welcome To Music Spam Bot',
+    '',
+    '🎶 Your Music, Your World!',
+    '✨ Premium Music Experience',
+    '⚡ Ultra Fast Performance',
+    '🎚️ Advanced Music Controls',
+    '🎤 Auto Live Join System',
+    '🎧 Personal Account Control',
+    '🔥 Smart Music Streaming',
+  ].join('\n'),
+);
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   if (req.method === 'GET') {
@@ -268,29 +282,24 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await editMessageText(chatId, msgId, lRes.ok ? '🚪 Left Voice Chat cleanly.' : getWorkerDiagnosticText('Leave Live'), KEYBOARDS.live());
       } else if (data === 'menu:account' || data.startsWith('account:')) {
         const op = data === 'menu:account' ? 'status' : data.slice(8);
-        if (op === 'reconnect' && hasWorker) {
-          await answerCallbackQuery(cq.id, 'Reconnecting Personal Account...');
-          await playAnimatedSequence(chatId, ANIMATION_PRESETS.reconnect, KEYBOARDS.account());
-        } else {
-          const aRes = await callAudioBackend<{ display_name?: string; username?: string; status?: string }>(
-            `/account/${op}`,
-            {},
-            op === 'status' ? 'GET' : 'POST',
-          );
-          await answerCallbackQuery(
-            cq.id,
-            op === 'status'
-              ? undefined
-              : aRes.ok
-                ? `Account ${op} completed.`
-                : 'VPS Audio Worker not linked yet!',
-            op !== 'status' && !aRes.ok,
-          );
-          const text = aRes.ok && aRes.data
-            ? `👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓\n\nName: ${aRes.data.display_name || 'Connected'}\nUsername: ${aRes.data.username || '@account'}\nStatus: ${aRes.data.status || 'connected'}`
-            : `👤 𝐏𝐄𝐑𝐒𝐎𝐍𝐀𝐋 𝐀𝐂𝐂𝐎𝐔𝐍𝐓 𝐂𝐎𝐍𝐓𝐑𝐎𝐋\n\n${getWorkerDiagnosticText(`Account ${op.toUpperCase()}`)}`;
-          await editMessageText(chatId, msgId, text, KEYBOARDS.account());
-        }
+        const aRes = await callAudioBackend<{ display_name?: string; username?: string; status?: string }>(
+          `/account/${op}`,
+          {},
+          op === 'status' ? 'GET' : 'POST',
+        );
+        await answerCallbackQuery(
+          cq.id,
+          op === 'status'
+            ? undefined
+            : aRes.ok
+              ? `Account ${op} completed.`
+              : 'VPS Audio Worker not linked yet!',
+          op !== 'status' && !aRes.ok,
+        );
+        const text = aRes.ok && aRes.data
+          ? toSmallCaps(`👤 Personal Account\n\nName: ${aRes.data.display_name || 'Connected'}\nUsername: ${aRes.data.username || '@account'}\nStatus: ${aRes.data.status || 'connected'}`)
+          : `${toSmallCaps('👤 Personal Account Control')}\n\n${getWorkerDiagnosticText(`Account ${op.toUpperCase()}`)}`;
+        await editMessageText(chatId, msgId, text, KEYBOARDS.account());
       } else if (data === 'menu:owner') {
         await answerCallbackQuery(cq.id);
         if (!isOwner(cq.from.id)) {
@@ -321,6 +330,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
+      const chatType = msg.chat.type || 'private';
       const text = (msg.text || '').trim();
       const [rawCmd, ...rest] = text.split(/\s+/);
       const cmd = rawCmd.toLowerCase().split('@')[0];
@@ -333,11 +343,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           : undefined;
 
       if (cmd === '/start') {
-        await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.welcome, WELCOME_TEXT], KEYBOARDS.mainMenu());
+        await sendEffectMessage(chatId, chatType, WELCOME_TEXT, KEYBOARDS.mainMenu(), TELEGRAM_EFFECTS.confetti);
       } else if (cmd === '/joinlive' || text.includes('t.me/') || text.includes('telegram.me/')) {
         const link = cmd === '/joinlive' ? arg : text;
         if (!link) {
-          await sendMessage(chatId, '❌ Invalid Live Link\nUsage: /joinlive https://t.me/example_group/123');
+          await sendMessage(chatId, toSmallCaps('❌ Invalid Live Link\nUsage: /joinlive https://t.me/example_group/123'));
         } else {
           const joinRes = await callAudioBackend<{ group_title?: string }>('/live/join', {
             link,
@@ -345,13 +355,19 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             requested_by: msg.from?.id,
           });
           const finalText = joinRes.ok
-            ? `🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃\n\n✅ Personal Account: Connected\n🎧 Voice Chat: Active\n📍 Group: ${joinRes.data?.group_title || link}\n⚡ Connection: Stable`
-            : `❌ Auto Live Join Failed\n\n${hasWorker ? joinRes.error : getWorkerDiagnosticText('Auto Live Join')}`;
-          await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.joinLive(link), finalText], KEYBOARDS.live());
+            ? toSmallCaps(`🎤 Live Connected\n\n✅ Personal Account: Connected\n🎧 Voice Chat: Active\n📍 Group: ${joinRes.data?.group_title || link}\n⚡ Connection: Stable`)
+            : `${toSmallCaps('❌ Auto Live Join Failed')}\n\n${hasWorker ? joinRes.error : getWorkerDiagnosticText('Auto Live Join')}`;
+          await sendEffectMessage(
+            chatId,
+            chatType,
+            finalText,
+            KEYBOARDS.live(),
+            joinRes.ok ? TELEGRAM_EFFECTS.star : undefined,
+          );
         }
       } else if (cmd === '/search') {
         if (!arg) {
-          await sendMessage(chatId, '🔍 Usage: /search <song name>');
+          await sendMessage(chatId, toSmallCaps('🔍 Usage: /search <song name>'));
         } else {
           const sRes = await callAudioBackend<{ results?: Array<{ id?: string; title?: string; url?: string }> }>('/player/search', {
             query: arg,
@@ -359,20 +375,27 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           const results = sRes.data?.results || [];
           if (!sRes.ok || results.length === 0) {
-            await sendMessage(chatId, hasWorker ? `❌ No tracks found for "${arg}".` : getWorkerDiagnosticText('Music Search'));
+            await sendMessage(chatId, hasWorker ? toSmallCaps(`❌ No tracks found for "${arg}".`) : getWorkerDiagnosticText('Music Search'));
           } else {
             const markup: InlineKeyboardMarkup = {
               inline_keyboard: [
                 ...results.slice(0, 5).map((item, idx) => [
                   {
-                    text: `${idx + 1}. 🎵 ${String(item.title || 'Track').slice(0, 42)}`,
+                    text: `${idx + 1}. 🎵 ${toSmallCaps(String(item.title || 'Track').slice(0, 42))}`,
                     callback_data: `pick:${item.id ? `yt:${item.id}` : String(item.url || '').slice(0, 56)}`,
+                    style: 'success' as const,
                   },
                 ]),
-                [{ text: '🔙 Main Menu', callback_data: 'menu:start' }],
+                [{ text: toSmallCaps('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' as const }],
               ],
             };
-            await sendMessage(chatId, `🔍 𝐒𝐄𝐋𝐄𝐂𝐓 𝐌𝐔𝐒𝐈𝐂 𝐅𝐎𝐑: ${arg}`, markup);
+            await sendEffectMessage(
+              chatId,
+              chatType,
+              toSmallCaps(`🔍 Select Music For: ${arg}`),
+              markup,
+              TELEGRAM_EFFECTS.thumbsUp,
+            );
           }
         }
       } else if (cmd === '/play' || msg.audio || msg.voice || audioDoc || isMediaUrl(text)) {
@@ -386,7 +409,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 ? arg
                 : text;
         if (!query) {
-          await sendMessage(chatId, '❌ Provide a song name, URL, or audio file: /play <song>');
+          await sendMessage(chatId, toSmallCaps('❌ Provide a song name, URL, or audio file: /play <song>'));
         } else {
           const pRes = await callAudioBackend<{ title?: string; artist?: string }>('/player/play', {
             chat_id: chatId,
@@ -394,9 +417,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             requested_by: msg.from?.username || msg.from?.first_name || 'User',
           });
           const finalText = pRes.ok
-            ? `🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆\n\n🎵 Song: ${pRes.data?.title || query}\n▶️ Status: Playing`
-            : `❌ Cannot Play Music\n\n${hasWorker ? pRes.error : getWorkerDiagnosticText('Play Music')}`;
-          await playAnimatedSequence(chatId, [...ANIMATION_PRESETS.playMusic(query), finalText], KEYBOARDS.player(pRes.ok));
+            ? toSmallCaps(`🎧 Now Playing\n\n🎵 Song: ${pRes.data?.title || query}\n▶️ Status: Playing`)
+            : `${toSmallCaps('❌ Cannot Play Music')}\n\n${hasWorker ? pRes.error : getWorkerDiagnosticText('Play Music')}`;
+          await sendEffectMessage(
+            chatId,
+            chatType,
+            finalText,
+            KEYBOARDS.player(pRes.ok),
+            pRes.ok ? TELEGRAM_EFFECTS.fire : undefined,
+          );
         }
       } else if (cmd === '/volume') {
         const volNum = Number(arg);

@@ -1,51 +1,22 @@
-import { editMessageText, sendMessage, toSmallCaps, type InlineKeyboardMarkup } from './telegram';
+import { sendChatAction, sendMessage, type InlineKeyboardMarkup } from './telegram';
 
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+export const TELEGRAM_EFFECTS = {
+  confetti: '5046509860389126442',
+  fire: '5104841245755180586',
+  star: '5161554034041029689',
+  thumbsUp: '5107584321108051014',
+  heart: '5044134455711629726',
+} as const;
 
-/**
- * Plays a snappy, modern equalizer + block-bar transition via editMessageText.
- */
-export async function playAnimatedSequence(
+export async function sendEffectMessage(
   chatId: number | string,
-  frames: string[],
-  finalReplyMarkup?: InlineKeyboardMarkup,
-  delayMs = 260,
+  chatType: string,
+  text: string,
+  replyMarkup?: InlineKeyboardMarkup,
+  effectId?: string,
 ): Promise<number | null> {
-  if (frames.length === 0) return null;
-
-  const first = await sendMessage(chatId, frames[0]);
-  const messageId = first?.result?.message_id ?? null;
-  if (!messageId) return null;
-
-  for (let i = 1; i < frames.length; i++) {
-    await sleep(delayMs);
-    const isLast = i === frames.length - 1;
-    await editMessageText(
-      chatId,
-      messageId,
-      frames[i],
-      isLast ? finalReplyMarkup : undefined,
-    );
-  }
-
-  return messageId;
+  await sendChatAction(chatId, 'typing').catch(() => undefined);
+  const useEffect = chatType === 'private' && effectId ? effectId : undefined;
+  const res = await sendMessage(chatId, text, replyMarkup, useEffect);
+  return res?.result?.message_id ?? null;
 }
-
-export const ANIMATION_PRESETS = {
-  welcome: [
-    `${toSmallCaps('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-    `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-  ],
-  joinLive: (target: string) => [
-    `${toSmallCaps(`🎤 Connecting Voice Chat (${target})...`)}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-    `${toSmallCaps('🔊 Syncing Live Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-  ],
-  playMusic: (query: string) => [
-    `${toSmallCaps(`🎵 Fetching Audio (${query})...`)}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-    `${toSmallCaps('🎚️ Tuning FFmpeg Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-  ],
-  reconnect: [
-    `${toSmallCaps('🔐 Verifying MTProto Session...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-    `${toSmallCaps('✅ Personal Account Reconnected!')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-  ],
-};

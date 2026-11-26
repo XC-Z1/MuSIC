@@ -24,15 +24,20 @@ test('renderProgressBar moves indicator smoothly across track duration', () => {
   assert.equal(end.indexOf('●'), 9);
 });
 
-test('/joinlive validates link and connects personal account to voice chat with animation frames', () => {
+test('/joinlive validates link and connects personal account to voice chat with colored buttons and native effect', () => {
   const initial = createInitialBotState();
+  assert.equal(initial.botUsername, 'MUSIC SPAM BOT');
+  assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[0]?.style, 'success');
+  assert.equal(initial.messages[0].inlineKeyboard?.[0]?.[1]?.style, 'primary');
+
   const joined = processBotInput(initial, '/joinlive https://t.me/dhaka_chill_vc/88');
   assert.equal(joined.liveSession.active, true);
   assert.equal(joined.liveSession.groupIdentifier, '@dhaka_chill_vc');
   assert.equal(joined.liveSession.voiceChatId, '88');
   const lastMsg = joined.messages[joined.messages.length - 1];
-  assert.equal(lastMsg.isAnimated, true);
-  assert.ok((lastMsg.animationFrames?.length ?? 0) >= 3);
+  assert.equal(lastMsg.effectBadge, '🤩 Live Effect');
+  assert.equal(lastMsg.inlineKeyboard?.[0]?.[0]?.style, 'success');
+  assert.equal(lastMsg.inlineKeyboard?.[0]?.[1]?.style, 'danger');
 });
 
 test('/play starts streaming and volume/mute callbacks adjust state accurately', () => {

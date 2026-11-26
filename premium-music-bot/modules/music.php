@@ -51,21 +51,15 @@ function handlePlayCommand(PDO $pdo, array $config, int|string $chatId, int $gro
          ON DUPLICATE KEY UPDATE tracks_played = tracks_played + 1, commands_handled = commands_handled + 1'
     )->execute();
 
-    $final = implode("\n", [
-        '🎧 𝐍𝐎𝐖 𝐏𝐋𝐀𝐘𝐈𝐍𝐆',
+    $final = toSmallCaps(implode("\n", [
+        '🎧 Now Playing',
         '',
         "🎵 Song: {$title}",
         "👤 Artist: {$artist}",
         '⏱️ Duration: ' . formatDurationClock($duration),
         '▶️ Status: Playing',
         '',
-        formatProgressBar(0, max(1, $duration)),
-    ]);
+    ])) . formatProgressBar(0, max(1, $duration));
 
-    playAnimatedTelegramFrames($config, $chatId, [
-        "🎵 Validating Music Source...\n◉ ○ ○ ○",
-        "🎚️ Processing Audio via FFmpeg...\n◉ ◉ ◉ ○",
-        "🔥 MUSIC STREAMING STARTED!\n◉ ◉ ◉ ◉",
-        $final,
-    ], buildPlayerKeyboard(true));
+    sendTelegramEffectMessage($config, $chatId, 'private', $final, buildPlayerKeyboard(true), '5104841245755180586');
 }

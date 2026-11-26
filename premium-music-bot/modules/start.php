@@ -1,7 +1,7 @@
 <?php
 declare(strict_types=1);
 
-function handleStartCommand(array $config, int|string $chatId, ?int $editMessageId = null): void
+function handleStartCommand(array $config, int|string $chatId, ?int $editMessageId = null, string $chatType = 'private'): void
 {
     $welcome = getWelcomeMessageText();
     $markup = buildMainWelcomeKeyboard();
@@ -10,13 +10,7 @@ function handleStartCommand(array $config, int|string $chatId, ?int $editMessage
         return;
     }
 
-    $frames = [
-        "🎧 Initializing Premium Music Bot...\n◉ ○ ○ ○",
-        "🎶 Syncing Personal Account Bridge...\n◉ ◉ ○ ○",
-        "✨ Preparing Live Audio Console...\n◉ ◉ ◉ ○",
-        $welcome,
-    ];
-    playAnimatedTelegramFrames($config, $chatId, $frames, $markup);
+    sendTelegramEffectMessage($config, $chatId, $chatType, $welcome, $markup, '5046509860389126442');
 }
 
 function handleHelpCommand(array $config, int|string $chatId, ?int $editMessageId = null): void

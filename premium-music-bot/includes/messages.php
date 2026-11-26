@@ -41,7 +41,7 @@ function toSmallCaps(string $input): string
 function getWelcomeMessageText(): string
 {
     return toSmallCaps(implode("\n", [
-        '🎧 Welcome To Premium Music Bot',
+        '🎧 Welcome To Music Spam Bot',
         '',
         '🎶 Your Music, Your World!',
         '✨ Premium Music Experience',

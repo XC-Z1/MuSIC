@@ -32,8 +32,8 @@ function handleJoinLiveCommand(PDO $pdo, array $config, int|string $chatId, int 
         $stmt->execute([':gid' => $groupId, ':aid' => $acctId, ':lnk' => $link]);
     }
 
-    $final = implode("\n", [
-        '🎤 𝐋𝐈𝐕𝐄 𝐂𝐎𝐍𝐍𝐄𝐂𝐓𝐄𝐃',
+    $final = toSmallCaps(implode("\n", [
+        '🎤 Live Connected',
         '',
         '✅ Personal Account: Connected',
         '🎧 Voice Chat: Active',
@@ -41,14 +41,9 @@ function handleJoinLiveCommand(PDO $pdo, array $config, int|string $chatId, int 
         '🎵 Music Player: Ready',
         '🔊 Audio: Streaming',
         '⚡ Connection: Stable',
-    ]);
+    ]));
 
-    playAnimatedTelegramFrames($config, $chatId, [
-        "🎧 Connecting to Voice Chat...\n◉ ○ ○ ○",
-        "🎤 Joining Live...\n◉ ◉ ○ ○",
-        "🎵 Preparing Music...\n◉ ◉ ◉ ○",
-        $final,
-    ], buildLiveControlKeyboard());
+    sendTelegramEffectMessage($config, $chatId, 'private', $final, buildLiveControlKeyboard(), '5161554034041029689');
 }
 
 function handleLeaveLiveCommand(PDO $pdo, array $config, int|string $chatId, int $groupId): void

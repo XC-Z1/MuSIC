@@ -28,23 +28,32 @@ class PersonalAccountClient:
     """Manages the Personal Telegram Account MTProto Client securely."""
 
     def __init__(self) -> None:
-        self.api_id = int(os.getenv("TELEGRAM_API_ID", "0") or 0)
-        self.api_hash = os.getenv("TELEGRAM_API_HASH", "")
+        raw_api_id = os.getenv("TELEGRAM_API_ID") or os.getenv("API_ID") or "0"
+        self.api_id = int(raw_api_id or 0)
+        self.api_hash = os.getenv("TELEGRAM_API_HASH") or os.getenv("API_HASH") or ""
         self.enc_key = os.getenv("TELEGRAM_SESSION_ENCRYPTION_KEY", "")
         self.enc_session = os.getenv("TELEGRAM_STRING_SESSION_ENC", "")
+        self.plain_session = os.getenv("TELEGRAM_STRING_SESSION") or os.getenv("SESSION_STRING") or ""
         self.client: Optional[Client] = None
         self.connected = False
         self.display_name = "Not Connected"
         self.username = "@unlinked"
         self.user_id: Optional[int] = None
 
+    def has_session_configured(self) -> bool:
+        return bool((self.enc_session and self.enc_key) or self.plain_session)
+
     async def connect(self) -> dict:
         if not self.api_id or not self.api_hash:
-            raise RuntimeError("TELEGRAM_API_ID and TELEGRAM_API_HASH must be set in environment.")
+            raise RuntimeError("TELEGRAM_API_ID (or API_ID) and TELEGRAM_API_HASH (or API_HASH) must be set.")
 
-        session_str = decrypt_session_string(self.enc_session, self.enc_key)
+        session_str = (
+            decrypt_session_string(self.enc_session, self.enc_key)
+            if self.enc_session and self.enc_key
+            else self.plain_session.strip()
+        )
         if not session_str:
-            raise RuntimeError("Encrypted session missing. Run `python account_client.py --login` on VPS CLI.")
+            raise RuntimeError("Session string missing. Set TELEGRAM_STRING_SESSION_ENC (or SESSION_STRING) in environment.")
 
         if self.client is None:
             self.client = Client(
@@ -93,7 +102,7 @@ async def interactive_cli_login() -> None:
     async with Client("cli_login", api_id=api_id, api_hash=api_hash, in_memory=True) as app:
         raw_session = await app.export_session_string()
         encrypted = encrypt_session_string(raw_session, enc_key)
-        print("\n=== COPY TO VPS .env (NEVER SHARE IN CHAT) ===")
+        print("\n=== COPY TO WORKER ENV VARS (NEVER SHARE IN CHAT) ===")
         print(f"TELEGRAM_STRING_SESSION_ENC={encrypted}")
 
 

@@ -43,6 +43,7 @@ export interface LiveSessionState {
 export interface BotInlineButton {
   text: string;
   callbackData: string;
+  style?: 'primary' | 'danger' | 'success';
 }
 
 export interface BotMessage {
@@ -51,8 +52,7 @@ export interface BotMessage {
   text: string;
   inlineKeyboard?: BotInlineButton[][];
   timestamp: string;
-  isAnimated?: boolean;
-  animationFrames?: string[];
+  effectBadge?: string;
   kind?: 'welcome' | 'player' | 'volume' | 'live' | 'account' | 'owner' | 'help' | 'error' | 'queue' | 'info';
 }
 
@@ -205,7 +205,7 @@ export function toSmallCaps(input: string): string {
 export function buildWelcomeMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const text = toSmallCaps(
     [
-      '🎧 Welcome To Premium Music Bot',
+      '🎧 Welcome To Music Spam Bot',
       '',
       '🎶 Your Music, Your World!',
       '✨ Premium Music Experience',
@@ -219,20 +219,20 @@ export function buildWelcomeMessage(): { text: string; inlineKeyboard: BotInline
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: toSmallCaps('🎵 Play Music'), callbackData: 'cmd:play_prompt' },
-      { text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player' },
+      { text: toSmallCaps('🎵 Play Music'), callbackData: 'cmd:play_prompt', style: 'success' },
+      { text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('🎤 Auto Live Join'), callbackData: 'cmd:live_panel' },
-      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account' },
+      { text: toSmallCaps('🎤 Auto Live Join'), callbackData: 'cmd:live_panel', style: 'success' },
+      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('📊 Now Playing'), callbackData: 'cmd:nowplaying' },
-      { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume' },
+      { text: toSmallCaps('📊 Now Playing'), callbackData: 'cmd:nowplaying', style: 'primary' },
+      { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('📚 Help & Commands'), callbackData: 'cmd:help' },
-      { text: toSmallCaps('👑 Bot Owner'), callbackData: 'cmd:owner' },
+      { text: toSmallCaps('📚 Help & Commands'), callbackData: 'cmd:help', style: 'primary' },
+      { text: toSmallCaps('👑 Bot Owner'), callbackData: 'cmd:owner', style: 'primary' },
     ],
   ];
 
@@ -284,25 +284,27 @@ export function buildPlayerMessage(state: BotSystemState): { text: string; inlin
         ].join('\n'),
       );
 
+  const isPlaying = state.playback.status === 'playing';
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: toSmallCaps('⏮️ Prev'), callbackData: 'player:prev' },
+      { text: toSmallCaps('⏮️ Prev'), callbackData: 'player:prev', style: 'primary' },
       {
-        text: toSmallCaps(state.playback.status === 'playing' ? '⏸️ Pause' : '▶️ Resume'),
-        callbackData: state.playback.status === 'playing' ? 'player:pause' : 'player:resume',
+        text: toSmallCaps(isPlaying ? '⏸️ Pause' : '▶️ Resume'),
+        callbackData: isPlaying ? 'player:pause' : 'player:resume',
+        style: isPlaying ? 'primary' : 'success',
       },
-      { text: toSmallCaps('⏭️ Skip'), callbackData: 'player:skip' },
-      { text: toSmallCaps('⏹️ Stop'), callbackData: 'player:stop' },
+      { text: toSmallCaps('⏭️ Skip'), callbackData: 'player:skip', style: 'primary' },
+      { text: toSmallCaps('⏹️ Stop'), callbackData: 'player:stop', style: 'danger' },
     ],
     [
-      { text: toSmallCaps(`🔁 Repeat: ${state.playback.repeatMode.toUpperCase()}`), callbackData: 'player:repeat' },
-      { text: toSmallCaps(`📚 Queue (${state.playback.queue.length})`), callbackData: 'cmd:queue' },
+      { text: toSmallCaps(`🔁 Repeat: ${state.playback.repeatMode.toUpperCase()}`), callbackData: 'player:repeat', style: 'primary' },
+      { text: toSmallCaps(`📚 Queue (${state.playback.queue.length})`), callbackData: 'cmd:queue', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume' },
-      { text: toSmallCaps('🎤 Live Control'), callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('🎚️ Volume Control'), callbackData: 'cmd:volume', style: 'primary' },
+      { text: toSmallCaps('🎤 Live Control'), callbackData: 'cmd:live_panel', style: 'success' },
     ],
-    [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }],
+    [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
   ];
 
   return { text, inlineKeyboard };
@@ -323,18 +325,18 @@ export function buildVolumeMessage(state: BotSystemState): { text: string; inlin
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: '➖ 10%', callbackData: 'vol:-10' },
-      { text: '➕ 10%', callbackData: 'vol:+10' },
+      { text: '➖ 10%', callbackData: 'vol:-10', style: 'danger' },
+      { text: '➕ 10%', callbackData: 'vol:+10', style: 'success' },
     ],
     [
-      { text: '➖ 20%', callbackData: 'vol:-20' },
-      { text: '➕ 20%', callbackData: 'vol:+20' },
+      { text: '➖ 20%', callbackData: 'vol:-20', style: 'danger' },
+      { text: '➕ 20%', callbackData: 'vol:+20', style: 'success' },
     ],
     [
-      { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute' },
-      { text: toSmallCaps('🔊 Unmute'), callbackData: 'vol:unmute' },
+      { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute', style: 'danger' },
+      { text: toSmallCaps('🔊 Unmute'), callbackData: 'vol:unmute', style: 'success' },
     ],
-    [{ text: toSmallCaps('🔙 Back To Player'), callbackData: 'cmd:player' }],
+    [{ text: toSmallCaps('🔙 Back To Player'), callbackData: 'cmd:player', style: 'primary' }],
   ];
 
   return { text, inlineKeyboard };
@@ -367,32 +369,32 @@ export function buildLiveControlMessage(state: BotSystemState): { text: string; 
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: toSmallCaps('🎤 Join Live'), callbackData: 'live:join_demo' },
-      { text: toSmallCaps('🚪 Leave Live'), callbackData: 'live:leave' },
+      { text: toSmallCaps('🎤 Join Live'), callbackData: 'live:join_demo', style: 'success' },
+      { text: toSmallCaps('🚪 Leave Live'), callbackData: 'live:leave', style: 'danger' },
     ],
     [
-      { text: toSmallCaps('▶️ Play Music'), callbackData: 'cmd:play_demo' },
-      { text: toSmallCaps('⏸️ Pause Music'), callbackData: 'player:pause' },
+      { text: toSmallCaps('▶️ Play Music'), callbackData: 'cmd:play_demo', style: 'success' },
+      { text: toSmallCaps('⏸️ Pause Music'), callbackData: 'player:pause', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('▶️ Resume Music'), callbackData: 'player:resume' },
-      { text: toSmallCaps('⏭️ Skip Music'), callbackData: 'player:skip' },
+      { text: toSmallCaps('▶️ Resume Music'), callbackData: 'player:resume', style: 'success' },
+      { text: toSmallCaps('⏭️ Skip Music'), callbackData: 'player:skip', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('⏹️ Stop Music'), callbackData: 'player:stop' },
-      { text: toSmallCaps('📊 Live Status'), callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('⏹️ Stop Music'), callbackData: 'player:stop', style: 'danger' },
+      { text: toSmallCaps('📊 Live Status'), callbackData: 'cmd:live_panel', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('🔊 Volume +10%'), callbackData: 'vol:+10' },
-      { text: toSmallCaps('🔉 Volume -10%'), callbackData: 'vol:-10' },
+      { text: toSmallCaps('🔊 Volume +10%'), callbackData: 'vol:+10', style: 'success' },
+      { text: toSmallCaps('🔉 Volume -10%'), callbackData: 'vol:-10', style: 'danger' },
     ],
     [
-      { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute' },
-      { text: toSmallCaps('🔊 Unmute'), callbackData: 'vol:unmute' },
+      { text: toSmallCaps('🔇 Mute'), callbackData: 'vol:mute', style: 'danger' },
+      { text: toSmallCaps('🔊 Unmute'), callbackData: 'vol:unmute', style: 'success' },
     ],
     [
-      { text: toSmallCaps('🔄 Reconnect'), callbackData: 'account:reconnect' },
-      { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' },
+      { text: toSmallCaps('🔄 Reconnect'), callbackData: 'account:reconnect', style: 'primary' },
+      { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' },
     ],
   ];
 
@@ -417,14 +419,14 @@ export function buildAccountMessage(state: BotSystemState): { text: string; inli
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
-      { text: toSmallCaps('🔗 Connect Account'), callbackData: 'account:connect' },
-      { text: toSmallCaps('🔌 Disconnect'), callbackData: 'account:disconnect' },
+      { text: toSmallCaps('🔗 Connect Account'), callbackData: 'account:connect', style: 'success' },
+      { text: toSmallCaps('🔌 Disconnect'), callbackData: 'account:disconnect', style: 'danger' },
     ],
     [
-      { text: toSmallCaps('🔄 Reconnect'), callbackData: 'account:reconnect' },
-      { text: toSmallCaps('🎤 Live Control'), callbackData: 'cmd:live_panel' },
+      { text: toSmallCaps('🔄 Reconnect'), callbackData: 'account:reconnect', style: 'primary' },
+      { text: toSmallCaps('🎤 Live Control'), callbackData: 'cmd:live_panel', style: 'success' },
     ],
-    [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }],
+    [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
   ];
 
   return { text, inlineKeyboard };
@@ -453,12 +455,13 @@ export function buildOwnerMessage(state: BotSystemState): { text: string; inline
       {
         text: toSmallCaps(state.maintenanceMode ? '✅ Disable Maintenance' : '🛠️ Enable Maintenance'),
         callbackData: 'owner:toggle_maintenance',
+        style: state.maintenanceMode ? 'success' : 'danger',
       },
-      { text: toSmallCaps('🔄 Restart Backend'), callbackData: 'owner:restart_backend' },
+      { text: toSmallCaps('🔄 Restart Backend'), callbackData: 'owner:restart_backend', style: 'primary' },
     ],
     [
-      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account' },
-      { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' },
+      { text: toSmallCaps('👤 Account Control'), callbackData: 'cmd:account', style: 'primary' },
+      { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' },
     ],
   ];
 
@@ -468,7 +471,7 @@ export function buildOwnerMessage(state: BotSystemState): { text: string; inline
 export function buildHelpMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const text = toSmallCaps(
     [
-      '📚 Command Reference',
+      '📚 Command Reference — Music Spam Bot',
       '',
       'General:',
       '/start · /help · /play <song|url> · /pause · /resume',
@@ -487,7 +490,12 @@ export function buildHelpMessage(): { text: string; inlineKeyboard: BotInlineBut
 
   return {
     text,
-    inlineKeyboard: [[{ text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player' }, { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }]],
+    inlineKeyboard: [
+      [
+        { text: toSmallCaps('🎧 Music Player'), callbackData: 'cmd:player', style: 'primary' },
+        { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' },
+      ],
+    ],
   };
 }
 
@@ -495,7 +503,7 @@ export function createInitialBotState(): BotSystemState {
   const now = new Date().toISOString();
   const welcome = buildWelcomeMessage();
   return {
-    botUsername: '@UltimateLiveMusicBot',
+    botUsername: 'MUSIC SPAM BOT',
     maintenanceMode: false,
     account: {
       id: 'acct-personal-01',
@@ -634,12 +642,7 @@ export function processBotInput(
         makeMessage('bot', w.text, {
           inlineKeyboard: w.inlineKeyboard,
           kind: 'welcome',
-          isAnimated: true,
-          animationFrames: [
-            `${toSmallCaps('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-            w.text,
-          ],
+          effectBadge: '🎉 Confetti Effect',
         }),
       );
       return state;
@@ -689,8 +692,8 @@ export function processBotInput(
           {
             kind: 'info',
             inlineKeyboard: [
-              [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo' }],
-              [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start' }],
+              [{ text: toSmallCaps('▶️ Play Midnight Signal'), callbackData: 'cmd:play_demo', style: 'success' }],
+              [{ text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' }],
             ],
           },
         ),
@@ -706,15 +709,15 @@ export function processBotInput(
     }
 
     if (input === 'cmd:queue') {
-      const lines = ['📚 𝐌𝐔𝐒𝐈𝐂 𝐐𝐔𝐄𝐔𝐄', ''];
+      const lines = [toSmallCaps('📚 Music Queue'), ''];
       if (state.playback.currentTrack) {
-        lines.push(`▶️ Now: ${state.playback.currentTrack.title} (${formatDuration(state.playback.currentTrack.durationSec)})`);
+        lines.push(toSmallCaps(`▶️ Now: ${state.playback.currentTrack.title} (${formatDuration(state.playback.currentTrack.durationSec)})`));
       }
       if (state.playback.queue.length === 0) {
-        lines.push('Queue is empty. Use /play <song> to add tracks.');
+        lines.push(toSmallCaps('Queue is empty. Use /play <song> to add tracks.'));
       } else {
         state.playback.queue.forEach((t, idx) => {
-          lines.push(`${idx + 1}. ${t.title} — ${t.artist} [${formatDuration(t.durationSec)}]`);
+          lines.push(toSmallCaps(`${idx + 1}. ${t.title} — ${t.artist} [${formatDuration(t.durationSec)}]`));
         });
       }
       state.messages.push(
@@ -722,8 +725,8 @@ export function processBotInput(
           kind: 'queue',
           inlineKeyboard: [
             [
-              { text: '⏭️ Skip Track', callbackData: 'player:skip' },
-              { text: '🎧 Player', callbackData: 'cmd:player' },
+              { text: toSmallCaps('⏭️ Skip Track'), callbackData: 'player:skip', style: 'primary' },
+              { text: toSmallCaps('🎧 Player'), callbackData: 'cmd:player', style: 'success' },
             ],
           ],
         }),
@@ -840,15 +843,7 @@ export function processBotInput(
         makeMessage('bot', a.text, {
           inlineKeyboard: a.inlineKeyboard,
           kind: 'account',
-          isAnimated: action === 'reconnect' || action === 'connect',
-          animationFrames:
-            action === 'reconnect' || action === 'connect'
-              ? [
-                  `${toSmallCaps('🔐 Verifying MTProto Session...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-                  `${toSmallCaps('✅ Personal Account Online!')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-                  a.text,
-                ]
-              : undefined,
+          effectBadge: action === 'reconnect' || action === 'connect' ? '❤️ Connected Effect' : undefined,
         }),
       );
       return state;
@@ -870,12 +865,7 @@ export function processBotInput(
         makeMessage('bot', o.text, {
           inlineKeyboard: o.inlineKeyboard,
           kind: 'owner',
-          isAnimated: true,
-          animationFrames: [
-            `${toSmallCaps('🔄 Restarting Audio Worker...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-            `${toSmallCaps('🎚️ Syncing FFmpeg & PyTgCalls...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-            o.text,
-          ],
+          effectBadge: '⚡ Restarted',
         }),
       );
       return state;
@@ -894,12 +884,7 @@ export function processBotInput(
         makeMessage('bot', w.text, {
           inlineKeyboard: w.inlineKeyboard,
           kind: 'welcome',
-          isAnimated: true,
-          animationFrames: [
-            `${toSmallCaps('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${toSmallCaps('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-            w.text,
-          ],
+          effectBadge: '🎉 Confetti Effect',
         }),
       );
       return state;
@@ -956,12 +941,7 @@ export function processBotInput(
         makeMessage('bot', liveMsg.text, {
           inlineKeyboard: liveMsg.inlineKeyboard,
           kind: 'live',
-          isAnimated: true,
-          animationFrames: [
-            `${toSmallCaps('🎤 Connecting Voice Chat...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-            `${toSmallCaps(`🔊 Joining ${parsed.chatIdentifier}...`)}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-            liveMsg.text,
-          ],
+          effectBadge: '🤩 Live Effect',
         }),
       );
       return state;
@@ -975,9 +955,14 @@ export function processBotInput(
         state.playback.status = 'paused';
       }
       state.messages.push(
-        makeMessage('bot', '🚪 Left the active Voice Chat cleanly. Session resources released.', {
+        makeMessage('bot', toSmallCaps('🚪 Left the active Voice Chat cleanly. Session resources released.'), {
           kind: 'live',
-          inlineKeyboard: [[{ text: '🎤 Rejoin Live', callbackData: 'live:join_demo' }, { text: '🔙 Main Menu', callbackData: 'cmd:start' }]],
+          inlineKeyboard: [
+            [
+              { text: toSmallCaps('🎤 Rejoin Live'), callbackData: 'live:join_demo', style: 'success' },
+              { text: toSmallCaps('🔙 Main Menu'), callbackData: 'cmd:start', style: 'primary' },
+            ],
+          ],
         }),
       );
       return state;
@@ -1057,12 +1042,7 @@ export function processBotInput(
         makeMessage('bot', player.text, {
           inlineKeyboard: player.inlineKeyboard,
           kind: 'player',
-          isAnimated: true,
-          animationFrames: [
-            `${toSmallCaps('🎵 Fetching Audio...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-            `${toSmallCaps('🎚️ Tuning FFmpeg Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-            player.text,
-          ],
+          effectBadge: '🔥 Fire Effect',
         }),
       );
       return state;

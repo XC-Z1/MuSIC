@@ -14,11 +14,20 @@ interface VercelRes extends ServerResponse {
 interface InlineButton {
   text: string;
   callback_data?: string;
+  style?: 'primary' | 'danger' | 'success';
 }
 
 interface InlineMarkup {
   inline_keyboard: InlineButton[][];
 }
+
+const TELEGRAM_EFFECTS = {
+  confetti: '5046509860389126442',
+  fire: '5104841245755180586',
+  star: '5161554034041029689',
+  thumbsUp: '5107584321108051014',
+  heart: '5044134455711629726',
+} as const;
 
 interface TelegramUpdate {
   message?: {
@@ -37,8 +46,6 @@ interface TelegramUpdate {
     data?: string;
   };
 }
-
-const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const SMALL_CAPS_MAP: Record<string, string> = {
   a: 'ᴀ', b: 'ʙ', c: 'ᴄ', d: 'ᴅ', e: 'ᴇ', f: 'ғ', g: 'ɢ', h: 'ʜ', i: 'ɪ',
@@ -68,7 +75,7 @@ function sc(input: string): string {
 }
 
 const WELCOME_TEXT = sc([
-  '🎧 Welcome To Premium Music Bot',
+  '🎧 Welcome To Music Spam Bot',
   '',
   '🎶 Your Music, Your World!',
   '✨ Premium Music Experience',
@@ -80,7 +87,7 @@ const WELCOME_TEXT = sc([
 ].join('\n'));
 
 const HELP_TEXT = sc([
-  '📚 Command Reference',
+  '📚 Command Reference — Music Spam Bot',
   '',
   'Music Selection & Playback:',
   '/search <song name> · /play <song|url>',
@@ -100,20 +107,20 @@ function mainKeyboard(): InlineMarkup {
   return {
     inline_keyboard: [
       [
-        { text: sc('🎵 Play Music'), callback_data: 'menu:play' },
-        { text: sc('🎧 Music Player'), callback_data: 'menu:player' },
+        { text: sc('🎵 Play Music'), callback_data: 'menu:play', style: 'success' },
+        { text: sc('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
       ],
       [
-        { text: sc('🎤 Auto Live Join'), callback_data: 'menu:live' },
-        { text: sc('👤 Account Control'), callback_data: 'menu:account' },
+        { text: sc('🎤 Auto Live Join'), callback_data: 'menu:live', style: 'success' },
+        { text: sc('👤 Account Control'), callback_data: 'menu:account', style: 'primary' },
       ],
       [
-        { text: sc('📊 Now Playing'), callback_data: 'menu:nowplaying' },
-        { text: sc('🎚️ Volume Control'), callback_data: 'menu:volume' },
+        { text: sc('📊 Now Playing'), callback_data: 'menu:nowplaying', style: 'primary' },
+        { text: sc('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
       ],
       [
-        { text: sc('📚 Help & Commands'), callback_data: 'menu:help' },
-        { text: sc('👑 Bot Owner'), callback_data: 'menu:owner' },
+        { text: sc('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },
+        { text: sc('👑 Bot Owner'), callback_data: 'menu:owner', style: 'primary' },
       ],
     ],
   };
@@ -123,20 +130,24 @@ function playerKeyboard(isPlaying = true): InlineMarkup {
   return {
     inline_keyboard: [
       [
-        { text: sc('⏮️ Prev'), callback_data: 'player:prev' },
-        { text: sc(isPlaying ? '⏸️ Pause' : '▶️ Resume'), callback_data: isPlaying ? 'player:pause' : 'player:resume' },
-        { text: sc('⏭️ Skip'), callback_data: 'player:skip' },
-        { text: sc('⏹️ Stop'), callback_data: 'player:stop' },
+        { text: sc('⏮️ Prev'), callback_data: 'player:prev', style: 'primary' },
+        {
+          text: sc(isPlaying ? '⏸️ Pause' : '▶️ Resume'),
+          callback_data: isPlaying ? 'player:pause' : 'player:resume',
+          style: isPlaying ? 'primary' : 'success',
+        },
+        { text: sc('⏭️ Skip'), callback_data: 'player:skip', style: 'primary' },
+        { text: sc('⏹️ Stop'), callback_data: 'player:stop', style: 'danger' },
       ],
       [
-        { text: sc('🔁 Repeat'), callback_data: 'player:repeat' },
-        { text: sc('📚 Queue'), callback_data: 'menu:queue' },
+        { text: sc('🔁 Repeat'), callback_data: 'player:repeat', style: 'primary' },
+        { text: sc('📚 Queue'), callback_data: 'menu:queue', style: 'primary' },
       ],
       [
-        { text: sc('🎚️ Volume Control'), callback_data: 'menu:volume' },
-        { text: sc('🎤 Live Control'), callback_data: 'menu:live' },
+        { text: sc('🎚️ Volume Control'), callback_data: 'menu:volume', style: 'primary' },
+        { text: sc('🎤 Live Control'), callback_data: 'menu:live', style: 'success' },
       ],
-      [{ text: sc('🔙 Main Menu'), callback_data: 'menu:start' }],
+      [{ text: sc('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' }],
     ],
   };
 }
@@ -145,18 +156,18 @@ function volumeKeyboard(): InlineMarkup {
   return {
     inline_keyboard: [
       [
-        { text: '➖ 10%', callback_data: 'vol:-10' },
-        { text: '➕ 10%', callback_data: 'vol:+10' },
+        { text: '➖ 10%', callback_data: 'vol:-10', style: 'danger' },
+        { text: '➕ 10%', callback_data: 'vol:+10', style: 'success' },
       ],
       [
-        { text: '➖ 20%', callback_data: 'vol:-20' },
-        { text: '➕ 20%', callback_data: 'vol:+20' },
+        { text: '➖ 20%', callback_data: 'vol:-20', style: 'danger' },
+        { text: '➕ 20%', callback_data: 'vol:+20', style: 'success' },
       ],
       [
-        { text: sc('🔇 Mute'), callback_data: 'vol:mute' },
-        { text: sc('🔊 Unmute'), callback_data: 'vol:unmute' },
+        { text: sc('🔇 Mute'), callback_data: 'vol:mute', style: 'danger' },
+        { text: sc('🔊 Unmute'), callback_data: 'vol:unmute', style: 'success' },
       ],
-      [{ text: sc('🔙 Back To Player'), callback_data: 'menu:player' }],
+      [{ text: sc('🔙 Back To Player'), callback_data: 'menu:player', style: 'primary' }],
     ],
   };
 }
@@ -165,32 +176,32 @@ function liveKeyboard(): InlineMarkup {
   return {
     inline_keyboard: [
       [
-        { text: sc('🎤 Join Live'), callback_data: 'live:join_hint' },
-        { text: sc('🚪 Leave Live'), callback_data: 'live:leave' },
+        { text: sc('🎤 Join Live'), callback_data: 'live:join_hint', style: 'success' },
+        { text: sc('🚪 Leave Live'), callback_data: 'live:leave', style: 'danger' },
       ],
       [
-        { text: sc('▶️ Play Music'), callback_data: 'menu:play' },
-        { text: sc('⏸️ Pause Music'), callback_data: 'player:pause' },
+        { text: sc('▶️ Play Music'), callback_data: 'menu:play', style: 'success' },
+        { text: sc('⏸️ Pause Music'), callback_data: 'player:pause', style: 'primary' },
       ],
       [
-        { text: sc('▶️ Resume Music'), callback_data: 'player:resume' },
-        { text: sc('⏭️ Skip Music'), callback_data: 'player:skip' },
+        { text: sc('▶️ Resume Music'), callback_data: 'player:resume', style: 'success' },
+        { text: sc('⏭️ Skip Music'), callback_data: 'player:skip', style: 'primary' },
       ],
       [
-        { text: sc('⏹️ Stop Music'), callback_data: 'player:stop' },
-        { text: sc('📊 Live Status'), callback_data: 'menu:live' },
+        { text: sc('⏹️ Stop Music'), callback_data: 'player:stop', style: 'danger' },
+        { text: sc('📊 Live Status'), callback_data: 'menu:live', style: 'primary' },
       ],
       [
-        { text: sc('🔊 Volume +10%'), callback_data: 'vol:+10' },
-        { text: sc('🔉 Volume -10%'), callback_data: 'vol:-10' },
+        { text: sc('🔊 Volume +10%'), callback_data: 'vol:+10', style: 'success' },
+        { text: sc('🔉 Volume -10%'), callback_data: 'vol:-10', style: 'danger' },
       ],
       [
-        { text: sc('🔇 Mute'), callback_data: 'vol:mute' },
-        { text: sc('🔊 Unmute'), callback_data: 'vol:unmute' },
+        { text: sc('🔇 Mute'), callback_data: 'vol:mute', style: 'danger' },
+        { text: sc('🔊 Unmute'), callback_data: 'vol:unmute', style: 'success' },
       ],
       [
-        { text: sc('🔄 Reconnect'), callback_data: 'account:reconnect' },
-        { text: sc('🔙 Main Menu'), callback_data: 'menu:start' },
+        { text: sc('🔄 Reconnect'), callback_data: 'account:reconnect', style: 'primary' },
+        { text: sc('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' },
       ],
     ],
   };
@@ -200,14 +211,14 @@ function accountKeyboard(): InlineMarkup {
   return {
     inline_keyboard: [
       [
-        { text: sc('🔗 Connect'), callback_data: 'account:connect' },
-        { text: sc('🔌 Disconnect'), callback_data: 'account:disconnect' },
+        { text: sc('🔗 Connect'), callback_data: 'account:connect', style: 'success' },
+        { text: sc('🔌 Disconnect'), callback_data: 'account:disconnect', style: 'danger' },
       ],
       [
-        { text: sc('🔄 Reconnect'), callback_data: 'account:reconnect' },
-        { text: sc('🎤 Live Control'), callback_data: 'menu:live' },
+        { text: sc('🔄 Reconnect'), callback_data: 'account:reconnect', style: 'primary' },
+        { text: sc('🎤 Live Control'), callback_data: 'menu:live', style: 'success' },
       ],
-      [{ text: sc('🔙 Main Menu'), callback_data: 'menu:start' }],
+      [{ text: sc('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' }],
     ],
   };
 }
@@ -216,35 +227,38 @@ function playGuideKeyboard(): InlineMarkup {
   return {
     inline_keyboard: [
       [
-        { text: sc('🔍 How To Search Song'), callback_data: 'play:search_hint' },
-        { text: sc('📁 Send MP3 / Link'), callback_data: 'play:url_hint' },
+        { text: sc('🔍 How To Search Song'), callback_data: 'play:search_hint', style: 'primary' },
+        { text: sc('📁 Send MP3 / Link'), callback_data: 'play:url_hint', style: 'success' },
       ],
       [
-        { text: sc('🎧 Music Player'), callback_data: 'menu:player' },
-        { text: sc('🎤 Live Control'), callback_data: 'menu:live' },
+        { text: sc('🎧 Music Player'), callback_data: 'menu:player', style: 'primary' },
+        { text: sc('🎤 Live Control'), callback_data: 'menu:live', style: 'success' },
       ],
-      [{ text: sc('🔙 Main Menu'), callback_data: 'menu:start' }],
+      [{ text: sc('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' }],
     ],
   };
 }
 
 function getWorkerDiagnosticText(actionLabel?: string): string {
-  const hasApiCreds = Boolean(process.env.TELEGRAM_API_ID && process.env.TELEGRAM_API_HASH);
+  const hasApiCreds = Boolean(
+    (process.env.TELEGRAM_API_ID || process.env.API_ID) &&
+    (process.env.TELEGRAM_API_HASH || process.env.API_HASH),
+  );
   const hasWorker = Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET);
   return sc(
     [
       actionLabel ? `⚡ Action: ${actionLabel}` : '',
       '🤖 Bot Webhook: ✅ Online (Vercel)',
-      `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (must also be in VPS .env)' : '⚪ Not set'}`,
+      `🔑 API ID / Hash (Vercel): ${hasApiCreds ? '✅ Found (must also be in Audio Worker)' : '⚪ Not set (or redeploy needed)'}`,
       `🖥️ Audio Worker: ${hasWorker ? '✅ Linked' : '❌ Not Linked Yet'}`,
       '',
       hasWorker
         ? 'Audio Worker is linked. Tap Connect/Reconnect or check worker logs.'
         : [
             'ℹ️ Vercel serverless cannot hold live MTProto Voice Chat streams alone.',
-            'To connect your Personal Account & stream audio:',
-            '1️⃣ Run backend/main.py on VPS or free Docker host',
-            '2️⃣ Generate session: python3 account_client.py --login',
+            'No VPS needed — deploy backend/Dockerfile free on Koyeb/Render/HF Spaces:',
+            '1️⃣ Deploy premium-music-bot/backend via Docker on Render or Koyeb',
+            '2️⃣ Set API_ID, API_HASH, SESSION & AUDIO_BACKEND_API_SECRET there',
             '3️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel & Redeploy.',
           ].join('\n'),
     ]
@@ -278,33 +292,30 @@ async function tgCall(
   return (await res.json()) as { ok: boolean; result?: { message_id?: number } };
 }
 
-async function sendAnimatedFrames(
+async function sendEffectMessage(
   token: string,
   chatId: number | string,
-  frames: string[],
-  finalMarkup?: InlineMarkup,
-  delayMs = 260,
+  chatType: string,
+  text: string,
+  replyMarkup?: InlineMarkup,
+  effectId?: string,
 ): Promise<void> {
-  if (frames.length === 0) return;
   await tgCall(token, 'sendChatAction', { chat_id: chatId, action: 'typing' }).catch(() => undefined);
-  const first = await tgCall(token, 'sendMessage', {
+  const useEffect = chatType === 'private' && Boolean(effectId);
+  const basePayload: Record<string, unknown> = {
     chat_id: chatId,
-    text: frames[0],
+    text,
     disable_web_page_preview: true,
-  });
-  const msgId = first.result?.message_id;
-  if (!msgId) return;
+    ...(replyMarkup ? { reply_markup: replyMarkup } : {}),
+  };
 
-  for (let i = 1; i < frames.length; i++) {
-    await sleep(delayMs);
-    const isLast = i === frames.length - 1;
-    await tgCall(token, 'editMessageText', {
-      chat_id: chatId,
-      message_id: msgId,
-      text: frames[i],
-      disable_web_page_preview: true,
-      ...(isLast && finalMarkup ? { reply_markup: finalMarkup } : {}),
-    });
+  const res = await tgCall(
+    token,
+    'sendMessage',
+    useEffect ? { ...basePayload, message_effect_id: effectId } : basePayload,
+  );
+  if (!res.ok && useEffect) {
+    await tgCall(token, 'sendMessage', basePayload);
   }
 }
 
@@ -717,6 +728,7 @@ export default async function handler(req: VercelReq, res: VercelRes) {
     if (update.message) {
       const msg = update.message;
       const chatId = msg.chat.id;
+      const chatType = msg.chat.type || 'private';
       const rawText = (msg.text || '').trim();
       const [rawCmd, ...rest] = rawText.split(/\s+/);
       const cmd = rawCmd.toLowerCase().split('@')[0];
@@ -729,15 +741,13 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           : undefined;
 
       if (cmd === '/start') {
-        await sendAnimatedFrames(
+        await sendEffectMessage(
           botToken,
           chatId,
-          [
-            `${sc('⚡ Booting Music Engine...')}\n▁▂▃▄▅▆▇  ▰▱▱▱▱`,
-            `${sc('🎧 Syncing Live Controls...')}\n▇▆▅▄▃▂▁  ▰▰▰▰▰`,
-            WELCOME_TEXT,
-          ],
+          chatType,
+          WELCOME_TEXT,
           mainKeyboard(),
+          TELEGRAM_EFFECTS.confetti,
         );
       } else if (cmd === '/help') {
         await tgCall(botToken, 'sendMessage', {
@@ -757,15 +767,13 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           const final = jRes.ok
             ? sc(`🎤 Live Connected\n\n✅ Personal Account: Connected\n🎧 Voice Chat: Active\n📍 Group: ${String(jRes.data?.group_title || link)}\n⚡ Connection: Stable\n\n🎵 Now send /search <song name> or /play <song name> to play music!`)
             : `${sc('❌ Auto Live Join Failed')}\n\n${jRes.configured ? sc(String(jRes.error || '')) : getWorkerDiagnosticText('Auto Live Join')}`;
-          await sendAnimatedFrames(
+          await sendEffectMessage(
             botToken,
             chatId,
-            [
-              `${sc('🎤 Connecting Voice Chat...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-              `${sc('🔊 Syncing Live Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-              final,
-            ],
+            chatType,
+            final,
             liveKeyboard(),
+            jRes.ok ? TELEGRAM_EFFECTS.star : undefined,
           );
         }
       } else if (cmd === '/search') {
@@ -792,14 +800,17 @@ export default async function handler(req: VercelReq, res: VercelRes) {
             const buttons: InlineButton[][] = results.slice(0, 5).map((item, idx) => {
               const title = String(item.title || `Track ${idx + 1}`).slice(0, 42);
               const ref = item.id ? `yt:${item.id}` : String(item.url || '').slice(0, 56);
-              return [{ text: `${idx + 1}. 🎵 ${sc(title)}`, callback_data: `pick:${ref}` }];
+              return [{ text: `${idx + 1}. 🎵 ${sc(title)}`, callback_data: `pick:${ref}`, style: 'success' }];
             });
-            buttons.push([{ text: sc('🔙 Main Menu'), callback_data: 'menu:start' }]);
-            await tgCall(botToken, 'sendMessage', {
-              chat_id: chatId,
-              text: sc(`🔍 Select Music For: ${arg}\n\nTap any song below to play it in Live Voice Chat:`),
-              reply_markup: { inline_keyboard: buttons },
-            });
+            buttons.push([{ text: sc('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' }]);
+            await sendEffectMessage(
+              botToken,
+              chatId,
+              chatType,
+              sc(`🔍 Select Music For: ${arg}\n\nTap any song below to play it in Live Voice Chat:`),
+              { inline_keyboard: buttons },
+              TELEGRAM_EFFECTS.thumbsUp,
+            );
           }
         }
       } else if (cmd === '/play' || msg.audio || msg.voice || audioDoc || isMediaUrl(rawText)) {
@@ -827,15 +838,13 @@ export default async function handler(req: VercelReq, res: VercelRes) {
           const final = pRes.ok
             ? sc(`🎧 Now Playing\n\n🎵 Song: ${String(pRes.data?.title || source)}\n▶️ Status: Playing`)
             : `${sc('❌ Cannot Play Music')}\n\n${pRes.configured ? sc(String(pRes.error || '')) : getWorkerDiagnosticText('Play Music')}`;
-          await sendAnimatedFrames(
+          await sendEffectMessage(
             botToken,
             chatId,
-            [
-              `${sc('🎵 Fetching Audio...')}\n▁▃▅▇▅▃  ▰▰▱▱▱`,
-              `${sc('🎚️ Tuning FFmpeg Stream...')}\n▇▅▃▁▃▅  ▰▰▰▰▰`,
-              final,
-            ],
+            chatType,
+            final,
             playerKeyboard(Boolean(pRes.ok)),
+            pRes.ok ? TELEGRAM_EFFECTS.fire : undefined,
           );
         }
       } else if (cmd === '/volume') {

@@ -19,39 +19,16 @@ const QUICK_COMMANDS = [
   { label: '/help', cmd: '/help' },
 ];
 
-function AnimatedMessageBody({ message }: { message: BotMessage }) {
-  const frames = message.animationFrames;
-  const [frameIndex, setFrameIndex] = useState<number>(
-    frames && frames.length > 0 ? 0 : -1,
-  );
+const BUTTON_STYLE_CLASSES: Record<'primary' | 'danger' | 'success', string> = {
+  primary: 'border-blue-400/40 bg-blue-600/90 text-white hover:bg-blue-500',
+  danger: 'border-rose-400/40 bg-rose-600/90 text-white hover:bg-rose-500',
+  success: 'border-emerald-400/40 bg-emerald-600/90 text-white hover:bg-emerald-500',
+};
 
-  useEffect(() => {
-    if (!frames || frames.length <= 1) {
-      setFrameIndex(-1);
-      return;
-    }
-    setFrameIndex(0);
-    let current = 0;
-    const timer = window.setInterval(() => {
-      current += 1;
-      if (current >= frames.length - 1) {
-        setFrameIndex(frames.length - 1);
-        window.clearInterval(timer);
-      } else {
-        setFrameIndex(current);
-      }
-    }, 260);
-    return () => window.clearInterval(timer);
-  }, [message.id, frames]);
-
-  const activeText =
-    frames && frameIndex >= 0 && frameIndex < frames.length
-      ? frames[frameIndex]
-      : message.text;
-
+function BotMessageBody({ message }: { message: BotMessage }) {
   return (
-    <pre className="whitespace-pre-wrap break-words font-sans text-[13.5px] leading-relaxed text-slate-100">
-      {activeText}
+    <pre className="whitespace-pre-wrap break-words font-sans text-[13.5px] leading-relaxed text-slate-100 animate-[fadeIn_0.2s_ease-out]">
+      {message.text}
     </pre>
   );
 }
@@ -146,11 +123,11 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                 {isUser ? (
                   <p className="text-[13.5px] font-medium break-words">{msg.text}</p>
                 ) : (
-                  <AnimatedMessageBody message={msg} />
+                  <BotMessageBody message={msg} />
                 )}
-                <div className="mt-1.5 flex items-center justify-end gap-1.5 text-[11px] text-slate-400 tabular-nums">
-                  {msg.isAnimated && !isUser && (
-                    <span className="text-sky-400">Live-Edit Sequence</span>
+                <div className="mt-1.5 flex items-center justify-end gap-2 text-[11px] text-slate-400 tabular-nums">
+                  {msg.effectBadge && !isUser && (
+                    <span className="text-amber-300/90">{msg.effectBadge}</span>
                   )}
                   <span>
                     {new Date(msg.timestamp).toLocaleTimeString([], {
@@ -175,17 +152,23 @@ export const TelegramSimulator: React.FC<TelegramSimulatorProps> = ({
                             : 'grid-cols-1'
                       }`}
                     >
-                      {row.map((btn) => (
-                        <button
-                          key={`${msg.id}-${btn.callbackData}-${btn.text}`}
-                          type="button"
-                          disabled={busy}
-                          onClick={() => onSendCommand(btn.callbackData, true)}
-                          className="rounded-lg border border-white/10 bg-[#1E293B] px-2.5 py-2 text-xs font-medium text-slate-100 hover:bg-[#273549] hover:border-sky-400/40 active:scale-[0.99] transition-all truncate cursor-pointer disabled:opacity-50"
-                        >
-                          {btn.text}
-                        </button>
-                      ))}
+                      {row.map((btn) => {
+                        const styleClasses = btn.style
+                          ? BUTTON_STYLE_CLASSES[btn.style]
+                          : 'border-white/10 bg-[#1E293B] text-slate-100 hover:bg-[#273549] hover:border-sky-400/40';
+                        return (
+                          <button
+                            key={`${msg.id}-${btn.callbackData}-${btn.text}`}
+                            type="button"
+                            disabled={busy}
+                            data-btn-style={btn.style ?? 'default'}
+                            onClick={() => onSendCommand(btn.callbackData, true)}
+                            className={`rounded-lg border px-2.5 py-2 text-xs font-medium active:scale-[0.98] transition-all truncate cursor-pointer disabled:opacity-50 ${styleClasses}`}
+                          >
+                            {btn.text}
+                          </button>
+                        );
+                      })}
                     </div>
                   ))}
                 </div>
