@@ -232,7 +232,8 @@ export function toSmallCaps(input: string): string {
         token.startsWith('http://') ||
         token.startsWith('https://') ||
         token.startsWith('tg://') ||
-        /^[A-Z0-9_]{3,}$/.test(token)
+        /^[\d:./%+\-()[\]#]+$/.test(token) ||
+        token === 'AES-256-GCM'
       ) {
         return token;
       }
@@ -243,8 +244,6 @@ export function toSmallCaps(input: string): string {
     .join('');
 }
 
-const DIVIDER = '━━━━━━━━━━━━━━━━━━━━';
-
 export function buildWelcomeMessage(options: {
   userId?: number | string;
   userName?: string;
@@ -254,29 +253,21 @@ export function buildWelcomeMessage(options: {
   muted?: boolean;
   maintenanceMode?: boolean;
 } = {}): { text: string; inlineKeyboard: BotInlineButton[][] } {
-  const userId = String(options.userId ?? 100001);
-  const userName = escapeHtml(options.userName || 'Music Lover');
   const isAdmin = Boolean(options.isAdmin);
-  const volLabel = options.muted ? 'ᴍᴜᴛᴇᴅ' : `${options.volume ?? 80}%`;
-  const liveLabel = options.liveActive ? '🟢 ᴄᴏɴɴᴇᴄᴛᴇᴅ' : '⚪ ɪᴅʟᴇ';
-  const statusBadge = isAdmin ? '👑 ᴀᴅᴍɪɴ' : '✅ ᴠᴇʀɪғɪᴇᴅ';
-  const maintNote =
-    isAdmin && options.maintenanceMode
-      ? `\n⚠️ <b>ʙᴏᴛ ᴍᴏᴅᴇ:</b> 🔴 ᴍᴀɪɴᴛᴇɴᴀɴᴄᴇ (ᴏғғ ғᴏʀ ᴜsᴇʀs)`
-      : '';
-
-  const text = [
-    `🎧 <b>${toSmallCaps('MUSIC SPAM BOT')}</b>`,
-    DIVIDER,
+  const lines = [
+    toSmallCaps('🎧 Welcome To Music Spam Bot'),
     '',
-    `👋 <b>${toSmallCaps('WELCOME')}, <a href="tg://user?id=${userId}">${userName}</a>!</b>`,
-    '',
-    `<blockquote>🪪 <b>${toSmallCaps('USER ID')}:</b> <code>${userId}</code>\n🔗 <b>${toSmallCaps('STATUS')}:</b> ${statusBadge}\n🎤 <b>${toSmallCaps('LIVE VC')}:</b> ${liveLabel}\n🔊 <b>${toSmallCaps('VOLUME')}:</b> ${volLabel} · <b>${toSmallCaps('ALERTS')}:</b> 🟢 ${toSmallCaps('ACTIVE')}${maintNote}</blockquote>`,
-    '',
-    `🎶 <b>${toSmallCaps('Stream HD music, auto-join live voice chats, boost ffmpeg volume 10%–200%, and manage personal playback seamlessly.')}</b>`,
-    '',
-    `🔐 <b>${toSmallCaps('SELECT AN OPTION BELOW')}:</b>`,
-  ].join('\n');
+    toSmallCaps('🎶 Your Music, Your World!'),
+    toSmallCaps('✨ Premium Music Experience'),
+    toSmallCaps('⚡ Ultra Fast Performance'),
+    toSmallCaps('🎚️ Advanced Music Controls'),
+    toSmallCaps('🎤 Auto Live Join System'),
+    toSmallCaps('🎧 Personal Account Control'),
+    toSmallCaps('🔥 Smart Music Streaming'),
+  ];
+  if (isAdmin && options.maintenanceMode) {
+    lines.push('', toSmallCaps('⚠️ Maintenance Mode: Active (Bot OFF for users)'));
+  }
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
@@ -294,31 +285,29 @@ export function buildWelcomeMessage(options: {
     isAdmin
       ? [
           { text: toSmallCaps('📚 Help & Commands'), callbackData: 'cmd:help', style: 'primary' },
-          { text: toSmallCaps('👑 Admin Panel'), callbackData: 'cmd:owner', style: 'danger' },
+          { text: toSmallCaps('👑 Bot Owner'), callbackData: 'cmd:owner', style: 'primary' },
         ]
       : [{ text: toSmallCaps('📚 Help & Commands'), callbackData: 'cmd:help', style: 'primary' }],
   ];
 
-  return { text, inlineKeyboard };
+  return { text: lines.join('\n'), inlineKeyboard };
 }
 
 export function buildMaintenanceMessage(options: {
   userId?: number | string;
   userName?: string;
 } = {}): { text: string; inlineKeyboard: BotInlineButton[][] } {
-  const userId = String(options.userId ?? 100002);
-  const userName = escapeHtml(options.userName || 'Friend');
+  const userName = options.userName || 'Friend';
   const bd = formatBangladeshDateTime();
   const text = [
-    `🛠️ <b>${toSmallCaps('MAINTENANCE MODE')}</b>`,
-    DIVIDER,
+    toSmallCaps('🛠️ Bot Maintenance Mode'),
     '',
-    `👋 <b>${toSmallCaps('HELLO')}, <a href="tg://user?id=${userId}">${userName}</a>!</b>`,
+    toSmallCaps(`👋 Hello, ${userName}!`),
+    toSmallCaps('🚦 Status: Offline (Scheduled Maintenance)'),
+    toSmallCaps(`📅 Date (BD): ${bd.dateStr}`),
+    toSmallCaps(`🕒 Time (BD 12h): ${bd.timeStr}`),
     '',
-    `<blockquote>🚦 <b>${toSmallCaps('BOT STATUS')}:</b> 🔴 ${toSmallCaps('OFFLINE (MAINTENANCE)')}\n🪪 <b>${toSmallCaps('YOUR ID')}:</b> <code>${userId}</code>\n📅 <b>${toSmallCaps('DATE (BD)')}:</b> ${bd.dateStr}\n🕒 <b>${toSmallCaps('TIME (BD 12H)')}:</b> ${bd.timeStr}</blockquote>`,
-    '',
-    `⚙️ <b>${toSmallCaps('The bot is currently under scheduled maintenance and studio upgrades.')}</b>`,
-    `✨ <i>${toSmallCaps('Please try again shortly — service will resume soon!')}</i>`,
+    toSmallCaps('✨ Service will resume shortly. Please check again soon!'),
   ].join('\n');
 
   return {
@@ -343,12 +332,14 @@ export function buildNewUserAdminAlert(user: {
       : `@${escapeHtml(user.username)}`
     : toSmallCaps('No Username');
   const text = [
-    `🆕 <b>${toSmallCaps('NEW USER JOINED BOT')}</b>`,
-    DIVIDER,
+    toSmallCaps('🆕 New User Joined Bot'),
     '',
-    `<blockquote>👤 <b>${toSmallCaps('NAME')}:</b> <a href="tg://user?id=${user.userId}">${cleanName}</a>\n🔗 <b>${toSmallCaps('USERNAME')}:</b> ${handle}\n🪪 <b>${toSmallCaps('CHAT ID')}:</b> <code>${user.chatId}</code>\n📅 <b>${toSmallCaps('DATE (BD)')}:</b> ${bd.dateStr}\n🕒 <b>${toSmallCaps('TIME (BD 12H)')}:</b> ${bd.timeStr}\n👥 <b>${toSmallCaps('TOTAL USERS')}:</b> #${user.totalUsers}</blockquote>`,
-    '',
-    `🔐 <b>${toSmallCaps('QUICK ADMIN ACTIONS')}:</b>`,
+    `${toSmallCaps('👤 Name:')} <a href="tg://user?id=${user.userId}">${cleanName}</a>`,
+    `${toSmallCaps('🔗 Username:')} ${handle}`,
+    `${toSmallCaps('🪪 Chat ID:')} <code>${user.chatId}</code>`,
+    `${toSmallCaps('📅 Date (BD):')} ${bd.dateStr}`,
+    `${toSmallCaps('🕒 Time (BD 12h):')} ${bd.timeStr}`,
+    `${toSmallCaps('👥 Total Users:')} #${user.totalUsers}`,
   ].join('\n');
 
   return {
@@ -356,7 +347,7 @@ export function buildNewUserAdminAlert(user: {
     inlineKeyboard: [
       [
         { text: toSmallCaps('🚫 Block User'), callbackData: `admin:block:${user.userId}:0`, style: 'danger' },
-        { text: toSmallCaps('👑 Admin Panel'), callbackData: 'cmd:owner', style: 'primary' },
+        { text: toSmallCaps('👑 Bot Owner'), callbackData: 'cmd:owner', style: 'primary' },
       ],
     ],
   };
@@ -377,10 +368,8 @@ function makeEqualizerFrames(startLabel: string, endLabel: string, finalText: st
 
 export function makePlayDeckFrames(finalText: string): string[] {
   return [
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>⚡ <b>${toSmallCaps('INITIALIZING AUDIO ENGINE...')}</b>\n◈──────────  <b>25%</b>  [ʟ/ʀ sʏɴᴄ]</blockquote>`,
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>🎛️ <b>${toSmallCaps('CALIBRATING FFMPEG DSP...')}</b>\n━━━◈───────  <b>50%</b>  [▮▮▮▯▯▯]</blockquote>`,
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>🔥 <b>${toSmallCaps('LOADING HD STREAM CHANNELS...')}</b>\n━━━━━━◈────  <b>75%</b>  [▮▮▮▮▮▯]</blockquote>`,
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>✨ <b>${toSmallCaps('STUDIO READY · 48KHZ HI-FI')}</b>\n━━━━━━━━━━◈  <b>100%</b> [▮▮▮▮▮▮]</blockquote>`,
+    toSmallCaps('🎵 Fetching Audio...'),
+    toSmallCaps('🔥 Tuning FFmpeg Stream...'),
     finalText,
   ];
 }
@@ -407,20 +396,26 @@ export function buildPlayerMessage(state: BotSystemState): { text: string; inlin
 
   const text = track
     ? [
-        `🎧 <b>${toSmallCaps('NOW PLAYING')}</b>`,
-        DIVIDER,
+        toSmallCaps('🎧 Now Playing'),
         '',
-        `<blockquote>🎵 <b>${toSmallCaps('SONG')}:</b> ${escapeHtml(track.title)}\n👤 <b>${toSmallCaps('ARTIST')}:</b> ${escapeHtml(track.artist)}\n⏱️ <b>${toSmallCaps('DURATION')}:</b> <code>${formatDuration(state.playback.positionSec)} / ${formatDuration(track.durationSec)}</code>\n🔊 <b>${toSmallCaps('VOLUME')}:</b> <code>${volLabel}</code>\n▶️ <b>${toSmallCaps('STATUS')}:</b> ${statusLabel}\n🎤 <b>${toSmallCaps('LIVE')}:</b> ${liveLabel}\n📚 <b>${toSmallCaps('QUEUE')}:</b> ${queuePos} · ${toSmallCaps('REPEAT')}: ${state.playback.repeatMode.toUpperCase()}</blockquote>`,
+        `${toSmallCaps('🎵 Song:')} ${escapeHtml(track.title)}`,
+        `${toSmallCaps('👤 Artist:')} ${escapeHtml(track.artist)}`,
+        `${toSmallCaps('⏱️ Duration:')} ${formatDuration(state.playback.positionSec)} / ${formatDuration(track.durationSec)}`,
+        `${toSmallCaps('🔊 Volume:')} ${volLabel}`,
+        `${toSmallCaps('▶️ Status:')} ${statusLabel}`,
+        `${toSmallCaps('🎤 Live:')} ${liveLabel}`,
+        `${toSmallCaps('📚 Queue:')} ${queuePos} · ${toSmallCaps(`Repeat: ${state.playback.repeatMode}`)}`,
         '',
-        `<code>${bar}</code>`,
+        bar,
       ].join('\n')
     : [
-        `🎧 <b>${toSmallCaps('MUSIC PLAYER')}</b>`,
-        DIVIDER,
+        toSmallCaps('🎧 Music Player'),
         '',
-        `<blockquote>💤 <b>${toSmallCaps('STATUS')}:</b> ${toSmallCaps('No active track')}\n🎤 <b>${toSmallCaps('LIVE VC')}:</b> ${liveLabel}\n🔊 <b>${toSmallCaps('VOLUME')}:</b> <code>${volLabel}</code></blockquote>`,
+        toSmallCaps('💤 No track currently active.'),
+        `${toSmallCaps('🎤 Live VC:')} ${liveLabel}`,
+        `${toSmallCaps('🔊 Volume:')} ${volLabel}`,
         '',
-        `🎵 <b>${toSmallCaps('Send /play <song or link> or tap Play Music below.')}</b>`,
+        toSmallCaps('Use /play <song or link> or tap Play Music below.'),
       ].join('\n');
 
   const isPlaying = state.playback.status === 'playing';
@@ -436,7 +431,7 @@ export function buildPlayerMessage(state: BotSystemState): { text: string; inlin
       { text: toSmallCaps('⏹️ Stop'), callbackData: 'player:stop', style: 'danger' },
     ],
     [
-      { text: toSmallCaps(`🔁 Repeat: ${state.playback.repeatMode.toUpperCase()}`), callbackData: 'player:repeat', style: 'primary' },
+      { text: toSmallCaps(`🔁 Repeat: ${state.playback.repeatMode}`), callbackData: 'player:repeat', style: 'primary' },
       { text: toSmallCaps(`📚 Queue (${state.playback.queue.length})`), callbackData: 'cmd:queue', style: 'primary' },
     ],
     [
@@ -452,10 +447,11 @@ export function buildPlayerMessage(state: BotSystemState): { text: string; inlin
 export function buildVolumeMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const displayVol = state.playback.muted ? `🔇 ${toSmallCaps('Muted')}` : `🔊 ${state.playback.volume}%`;
   const text = [
-    `🎚️ <b>${toSmallCaps('VOLUME CONTROL')}</b>`,
-    DIVIDER,
+    toSmallCaps('🎚️ Volume Control'),
     '',
-    `<blockquote>🔊 <b>${toSmallCaps('CURRENT GAIN')}:</b> <code>&lt;  ${displayVol}  &gt;</code>\n📍 <b>${toSmallCaps('PROFILE')}:</b> ${escapeHtml(state.liveSession.active ? state.liveSession.groupIdentifier : 'Global Default')}\n⚡ <b>${toSmallCaps('RANGE')}:</b> 10% – 200% (FFmpeg Real-Time)</blockquote>`,
+    `${toSmallCaps('Current Gain:')} <  ${displayVol}  >`,
+    `${toSmallCaps('Profile:')} ${escapeHtml(state.liveSession.active ? state.liveSession.groupIdentifier : toSmallCaps('Global Default'))}`,
+    toSmallCaps('Range: 10% – 200% (FFmpeg Real-Time)'),
   ].join('\n');
 
   const inlineKeyboard: BotInlineButton[][] = [
@@ -487,18 +483,22 @@ export function buildLiveControlMessage(state: BotSystemState): { text: string; 
   const live = state.liveSession;
   const text = live.active
     ? [
-        `🎤 <b>${toSmallCaps('LIVE CONNECTED')}</b>`,
-        DIVIDER,
+        toSmallCaps('🎤 Live Connected'),
         '',
-        `<blockquote>✅ <b>${toSmallCaps('ACCOUNT')}:</b> ${escapeHtml(acct.displayName)} (${escapeHtml(acct.username)})\n🎧 <b>${toSmallCaps('VOICE CHAT')}:</b> 🟢 ${toSmallCaps('Active')}\n📍 <b>${toSmallCaps('GROUP')}:</b> ${escapeHtml(live.groupTitle)} (${escapeHtml(live.groupIdentifier)})\n🎵 <b>${toSmallCaps('PLAYER')}:</b> ${state.playback.currentTrack ? toSmallCaps('Streaming') : toSmallCaps('Ready')}\n🔊 <b>${toSmallCaps('AUDIO')}:</b> <code>${state.playback.muted ? 'Muted' : `${state.playback.volume}%`}</code>\n⚡ <b>${toSmallCaps('CONNECTION')}:</b> ${live.connectionQuality} (${live.activeStreamsCount}/${live.maxConcurrentStreams})</blockquote>`,
+        `${toSmallCaps('✅ Personal Account:')} ${escapeHtml(acct.displayName)} (${escapeHtml(acct.username)})`,
+        `${toSmallCaps('🎧 Voice Chat:')} ${toSmallCaps('Active')}`,
+        `${toSmallCaps('📍 Group:')} ${escapeHtml(live.groupTitle)} (${escapeHtml(live.groupIdentifier)})`,
+        `${toSmallCaps('🎵 Player:')} ${state.playback.currentTrack ? toSmallCaps('Streaming') : toSmallCaps('Ready')}`,
+        `${toSmallCaps('🔊 Audio:')} ${state.playback.muted ? toSmallCaps('Muted') : `${state.playback.volume}%`}`,
+        `${toSmallCaps('⚡ Connection:')} ${toSmallCaps(live.connectionQuality)} (${live.activeStreamsCount}/${live.maxConcurrentStreams})`,
       ].join('\n')
     : [
-        `🎤 <b>${toSmallCaps('LIVE CONTROL PANEL')}</b>`,
-        DIVIDER,
+        toSmallCaps('🎤 Live Control Panel'),
         '',
-        `<blockquote>👤 <b>${toSmallCaps('ACCOUNT')}:</b> ${acct.status.toUpperCase()} (${escapeHtml(acct.username)})\n🎧 <b>${toSmallCaps('VOICE CHAT')}:</b> ⚪ ${toSmallCaps('Not Connected')}</blockquote>`,
+        `${toSmallCaps('👤 Personal Account:')} ${toSmallCaps(acct.status)} (${escapeHtml(acct.username)})`,
+        `${toSmallCaps('🎧 Voice Chat:')} ${toSmallCaps('Not Connected')}`,
         '',
-        `👉 <b>${toSmallCaps('Send /joinlive https://t.me/group_name/123 or tap Join Live.')}</b>`,
+        toSmallCaps('Send /joinlive https://t.me/group_name/123 or tap Join Live.'),
       ].join('\n');
 
   const inlineKeyboard: BotInlineButton[][] = [
@@ -538,10 +538,14 @@ export function buildLiveControlMessage(state: BotSystemState): { text: string; 
 export function buildAccountMessage(state: BotSystemState): { text: string; inlineKeyboard: BotInlineButton[][] } {
   const a = state.account;
   const text = [
-    `👤 <b>${toSmallCaps('PERSONAL ACCOUNT CONTROL')}</b>`,
-    DIVIDER,
+    toSmallCaps('👤 Personal Account Control'),
     '',
-    `<blockquote>📛 <b>${toSmallCaps('NAME')}:</b> ${escapeHtml(a.displayName)}\n🔗 <b>${toSmallCaps('USERNAME')}:</b> ${escapeHtml(a.username)}\n📱 <b>${toSmallCaps('PHONE')}:</b> <code>${escapeHtml(a.phoneMasked)}</code>\n⚡ <b>${toSmallCaps('MTPROTO')}:</b> ${a.status.toUpperCase()} (${a.online ? '🟢 Online' : '🔴 Offline'})\n🎤 <b>${toSmallCaps('ACTIVE VC')}:</b> ${state.liveSession.active ? escapeHtml(state.liveSession.groupIdentifier) : toSmallCaps('None')}\n🔐 <b>${toSmallCaps('SESSION VAULT')}:</b> ${a.sessionEncrypted ? 'AES-256-GCM' : 'Not Configured'}</blockquote>`,
+    `${toSmallCaps('📛 Name:')} ${escapeHtml(a.displayName)}`,
+    `${toSmallCaps('🔗 Username:')} ${escapeHtml(a.username)}`,
+    `${toSmallCaps('📱 Phone:')} ${escapeHtml(a.phoneMasked)}`,
+    `${toSmallCaps('⚡ MTProto:')} ${toSmallCaps(a.status)} (${a.online ? toSmallCaps('Online') : toSmallCaps('Offline')})`,
+    `${toSmallCaps('🎤 Active VC:')} ${state.liveSession.active ? escapeHtml(state.liveSession.groupIdentifier) : toSmallCaps('None')}`,
+    `${toSmallCaps('🔐 Session Vault:')} ${a.sessionEncrypted ? 'AES-256-GCM' : toSmallCaps('Not Configured')}`,
   ].join('\n');
 
   const inlineKeyboard: BotInlineButton[][] = [
@@ -564,18 +568,21 @@ export function buildOwnerMessage(state: BotSystemState): { text: string; inline
   const bd = formatBangladeshDateTime();
   const blockedCount = state.users.filter((u) => u.banned).length;
   const text = [
-    `👑 <b>${toSmallCaps('ADMIN CONTROL PANEL')}</b>`,
-    DIVIDER,
+    toSmallCaps('👑 Bot Owner Dashboard'),
     '',
-    `<blockquote>🤖 <b>${toSmallCaps('BOT STATUS')}:</b> ${state.maintenanceMode ? '🔴 OFF (Maintenance)' : '🟢 ONLINE'}\n👥 <b>${toSmallCaps('USERS')}:</b> <code>${s.totalUsers}</code> (✅ ${s.totalUsers - blockedCount} · 🚫 ${blockedCount})\n💬 <b>${toSmallCaps('GROUPS')}:</b> <code>${s.totalGroups}</code>\n🎵 <b>${toSmallCaps('TOTAL PLAYS')}:</b> <code>${s.totalMusicPlayed}</code>\n🖥️ <b>${toSmallCaps('SERVER CPU/RAM')}:</b> <code>${s.cpuPercent}% / ${s.ramPercent}%</code>\n⚡ <b>${toSmallCaps('WORKER')}:</b> ${s.backendOnline ? `🟢 Online (${s.backendLatencyMs}ms)` : '🔴 Offline'}\n🕒 <b>${toSmallCaps('BD TIME (12H)')}:</b> ${bd.timeStr}</blockquote>`,
-    '',
-    `🔐 <b>${toSmallCaps('SELECT AN ADMIN ACTION')}:</b>`,
+    `${toSmallCaps('🤖 Bot Status:')} ${state.maintenanceMode ? toSmallCaps('🔴 OFF (Maintenance)') : toSmallCaps('🟢 Online')}`,
+    `${toSmallCaps('👥 Total Users:')} ${s.totalUsers} (✅ ${s.totalUsers - blockedCount} · 🚫 ${blockedCount})`,
+    `${toSmallCaps('💬 Total Groups:')} ${s.totalGroups}`,
+    `${toSmallCaps('🎵 Total Music Played:')} ${s.totalMusicPlayed}`,
+    `${toSmallCaps('🖥️ Server CPU / RAM:')} ${s.cpuPercent}% / ${s.ramPercent}%`,
+    `${toSmallCaps('⚡ Audio Worker:')} ${s.backendOnline ? toSmallCaps(`Online (${s.backendLatencyMs}ms)`) : toSmallCaps('Offline')}`,
+    `${toSmallCaps('🕒 BD Time (12h):')} ${bd.timeStr}`,
   ].join('\n');
 
   const inlineKeyboard: BotInlineButton[][] = [
     [
       {
-        text: toSmallCaps(state.maintenanceMode ? '🟢 Turn Bot ON' : '🔴 Turn Bot OFF (Maint.)'),
+        text: toSmallCaps(state.maintenanceMode ? '🟢 Turn Bot ON' : '🔴 Turn Bot OFF'),
         callbackData: 'owner:toggle_maintenance',
         style: state.maintenanceMode ? 'success' : 'danger',
       },
@@ -604,16 +611,15 @@ export function buildAdminUsersMessage(state: BotSystemState, page = 0): { text:
   const lines = slice.map((u) => {
     const bd = formatBangladeshDateTime(u.joinedAt);
     const badge = u.role === 'owner' ? '👑' : u.banned ? '🚫' : '✅';
-    return `${badge} <b>${escapeHtml(u.name)}</b> (${escapeHtml(u.username)})\n   🪪 <code>${u.chatId}</code> · 🎵 ${u.requestsCount} · 🕒 ${bd.timeStr}`;
+    return `${badge} ${escapeHtml(u.name)} (${escapeHtml(u.username)})\n   🪪 <code>${u.chatId}</code> · 🎵 ${u.requestsCount} · 🕒 ${bd.timeStr}`;
   });
 
   const text = [
-    `👥 <b>${toSmallCaps('USER MANAGEMENT')}</b> (${safePage + 1}/${totalPages})`,
-    DIVIDER,
+    `${toSmallCaps('👥 User Management')} (${safePage + 1}/${totalPages})`,
     '',
-    `<blockquote>${lines.join('\n\n') || toSmallCaps('No registered users yet.')}</blockquote>`,
+    lines.join('\n\n') || toSmallCaps('No registered users yet.'),
     '',
-    `💡 <b>${toSmallCaps('Tap any user below to Block / Unblock or inspect status:')}</b>`,
+    toSmallCaps('Tap any user below to Block / Unblock or inspect status:'),
   ].join('\n');
 
   const rows: BotInlineButton[][] = slice.map((u) => [
@@ -632,18 +638,26 @@ export function buildAdminUsersMessage(state: BotSystemState, page = 0): { text:
     navRow.push({ text: 'Next ➡️', callbackData: `admin:users:${safePage + 1}`, style: 'primary' });
   }
   if (navRow.length > 0) rows.push(navRow);
-  rows.push([{ text: toSmallCaps('🔙 Admin Panel'), callbackData: 'cmd:owner', style: 'primary' }]);
+  rows.push([{ text: toSmallCaps('🔙 Bot Owner'), callbackData: 'cmd:owner', style: 'primary' }]);
 
   return { text, inlineKeyboard: rows };
 }
 
 export function buildHelpMessage(): { text: string; inlineKeyboard: BotInlineButton[][] } {
-  const text = [
-    `📚 <b>${toSmallCaps('COMMAND REFERENCE')}</b>`,
-    DIVIDER,
-    '',
-    `<blockquote>🎵 <b>${toSmallCaps('MUSIC & PLAYBACK')}:</b>\n/start · /search &lt;song&gt; · /play &lt;song|url&gt;\n/pause · /resume · /skip · /stop · /queue · /nowplaying\n/volume &lt;10-200&gt; · /mute · /unmute\n\n🎤 <b>${toSmallCaps('LIVE & ACCOUNT')}:</b>\n/joinlive &lt;t.me link&gt; · /leavelive · /live · /autojoin\n/account · /connect · /disconnect · /reconnect</blockquote>`,
-  ].join('\n');
+  const text = toSmallCaps(
+    [
+      '📚 Command Reference',
+      '',
+      'Music Selection & Playback:',
+      '/search <song> · /play <url|song> · /pause',
+      '/resume · /skip · /stop · /queue · /nowplaying',
+      '/volume <10-200> · /mute · /unmute',
+      '',
+      'Live & Personal Account:',
+      '/joinlive <t.me link> · /leavelive · /live · /autojoin',
+      '/account · /connect · /disconnect · /reconnect',
+    ].join('\n'),
+  );
 
   return {
     text,
@@ -837,12 +851,11 @@ export function processBotInput(
       makeMessage(
         'bot',
         [
-          `🚫 <b>${toSmallCaps('ACCESS RESTRICTED')}</b>`,
-          DIVIDER,
+          toSmallCaps('🚫 Access Restricted'),
           '',
-          `<blockquote>⛔ <b>${toSmallCaps('STATUS')}:</b> ${toSmallCaps('Blocked By Admin')}\n🪪 <b>${toSmallCaps('USER ID')}:</b> <code>${actorChatId}</code></blockquote>`,
-          '',
-          `<i>${toSmallCaps('You are blocked from using this bot. Contact the Bot Admin.')}</i>`,
+          toSmallCaps('⛔ Status: Blocked By Admin'),
+          `${toSmallCaps('🪪 User ID:')} <code>${actorChatId}</code>`,
+          toSmallCaps('Contact the Bot Owner to request unblock.'),
         ].join('\n'),
         { kind: 'error', effectBadge: '👎 Alert Effect' },
       ),
@@ -862,12 +875,7 @@ export function processBotInput(
     state.messages.push(
       makeMessage(
         'bot',
-        [
-          `⛔ <b>${toSmallCaps('ACCESS DENIED')}</b>`,
-          DIVIDER,
-          '',
-          `<blockquote>🔒 <b>${toSmallCaps('ADMIN ONLY AREA')}</b>\n${toSmallCaps('Only the Bot Admin can view or enter the Admin Panel.')}</blockquote>`,
-        ].join('\n'),
+        toSmallCaps('⛔ Admin or Owner permissions required.'),
         { kind: 'error', effectBadge: '👎 Alert Effect' },
       ),
     );
@@ -999,10 +1007,15 @@ export function processBotInput(
       const bdJoined = formatBangladeshDateTime(target.joinedAt);
       const bdSeen = formatBangladeshDateTime(target.lastSeenAt);
       const card = [
-        `👤 <b>${toSmallCaps('USER PROFILE & STATUS')}</b>`,
-        DIVIDER,
+        toSmallCaps('👤 User Profile & Status'),
         '',
-        `<blockquote>📛 <b>${toSmallCaps('NAME')}:</b> ${escapeHtml(target.name)}\n🔗 <b>${toSmallCaps('USERNAME')}:</b> ${escapeHtml(target.username)}\n🪪 <b>${toSmallCaps('CHAT ID')}:</b> <code>${target.chatId}</code>\n🚦 <b>${toSmallCaps('STATUS')}:</b> ${target.banned ? '🚫 BLOCKED' : '✅ ACTIVE'}\n🎵 <b>${toSmallCaps('PLAYS')}:</b> ${target.requestsCount}\n📅 <b>${toSmallCaps('JOINED (BD)')}:</b> ${bdJoined.fullStr}\n🕒 <b>${toSmallCaps('LAST SEEN (BD)')}:</b> ${bdSeen.fullStr}</blockquote>`,
+        `${toSmallCaps('📛 Name:')} ${escapeHtml(target.name)}`,
+        `${toSmallCaps('🔗 Username:')} ${escapeHtml(target.username)}`,
+        `${toSmallCaps('🪪 Chat ID:')} <code>${target.chatId}</code>`,
+        `${toSmallCaps('🚦 Status:')} ${target.banned ? toSmallCaps('🚫 Blocked') : toSmallCaps('✅ Active')}`,
+        `${toSmallCaps('🎵 Plays:')} ${target.requestsCount}`,
+        `${toSmallCaps('📅 Joined (BD):')} ${bdJoined.fullStr}`,
+        `${toSmallCaps('🕒 Last Seen (BD):')} ${bdSeen.fullStr}`,
       ].join('\n');
       const kb: BotInlineButton[][] = [];
       if (target.role !== 'owner') {
@@ -1014,7 +1027,7 @@ export function processBotInput(
       }
       kb.push([
         { text: toSmallCaps('👥 Users List'), callbackData: `admin:users:${page}`, style: 'primary' },
-        { text: toSmallCaps('👑 Admin Panel'), callbackData: 'cmd:owner', style: 'primary' },
+        { text: toSmallCaps('👑 Bot Owner'), callbackData: 'cmd:owner', style: 'primary' },
       ]);
       state.messages.push(
         makeMessage('bot', card, {
@@ -1028,16 +1041,16 @@ export function processBotInput(
 
     if (input === 'admin:broadcast_prompt') {
       const text = [
-        `📢 <b>${toSmallCaps('BROADCAST ANNOUNCEMENT')}</b>`,
-        DIVIDER,
+        toSmallCaps('📢 Broadcast Announcement'),
         '',
-        `<blockquote>📨 <b>${toSmallCaps('ACTIVE RECIPIENTS')}:</b> <code>${state.stats.totalUsers}</code>\n💡 <b>${toSmallCaps('USAGE')}:</b> <code>/broadcast Your message here</code></blockquote>`,
+        `${toSmallCaps('📨 Active Recipients:')} ${state.stats.totalUsers}`,
+        `${toSmallCaps('💡 Usage:')} /broadcast Your message here`,
       ].join('\n');
       state.messages.push(
         makeMessage('bot', text, {
           kind: 'owner',
           effectBadge: '📢 Broadcast',
-          inlineKeyboard: [[{ text: toSmallCaps('🔙 Admin Panel'), callbackData: 'cmd:owner', style: 'primary' }]],
+          inlineKeyboard: [[{ text: toSmallCaps('🔙 Bot Owner'), callbackData: 'cmd:owner', style: 'primary' }]],
         }),
       );
       return state;
@@ -1057,12 +1070,11 @@ export function processBotInput(
 
     if (input === 'cmd:play_prompt') {
       const guide = [
-        `🎵 <b>${toSmallCaps('HOW TO SELECT & PLAY MUSIC')}</b>`,
-        DIVIDER,
+        toSmallCaps('🎵 Play Music'),
         '',
-        `<blockquote>1️⃣ <b>${toSmallCaps('SEARCH & PICK')}:</b> <code>/search Kesariya</code>\n2️⃣ <b>${toSmallCaps('INSTANT PLAY')}:</b> <code>/play Midnight Signal</code>\n3️⃣ <b>${toSmallCaps('LINK / AUDIO')}:</b> ${toSmallCaps('Send YouTube link, SoundCloud, or MP3 file directly.')}</blockquote>`,
-        '',
-        `🔐 <b>${toSmallCaps('SELECT AN OPTION BELOW')}:</b>`,
+        toSmallCaps('1️⃣ /search <song> — Pick from top results'),
+        toSmallCaps('2️⃣ /play <song or link> — Play immediately'),
+        toSmallCaps('3️⃣ Send any MP3 / Audio / Voice file directly'),
       ].join('\n');
       state.messages.push(
         makeMessage('bot', guide, {
@@ -1585,10 +1597,10 @@ export function processBotInput(
         makeMessage(
           'bot',
           [
-            `📢 <b>${toSmallCaps('BROADCAST DISPATCHED')}</b>`,
-            DIVIDER,
+            toSmallCaps('📢 Broadcast Dispatched'),
             '',
-            `<blockquote>✅ <b>${toSmallCaps('DELIVERED TO')}:</b> <code>${state.stats.totalUsers}</code> ${toSmallCaps('users')} · <code>${state.stats.totalGroups}</code> ${toSmallCaps('groups')}\n📝 <b>${toSmallCaps('MESSAGE')}:</b> ${escapeHtml(arg)}</blockquote>`,
+            `${toSmallCaps('✅ Delivered To:')} ${state.stats.totalUsers} ${toSmallCaps('users')} · ${state.stats.totalGroups} ${toSmallCaps('groups')}`,
+            `${toSmallCaps('📝 Message:')} ${escapeHtml(arg)}`,
           ].join('\n'),
           { kind: 'owner', effectBadge: '🎉 Confetti Effect' },
         ),

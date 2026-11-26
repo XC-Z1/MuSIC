@@ -65,7 +65,8 @@ export function toSmallCaps(input: string): string {
         token.startsWith('http://') ||
         token.startsWith('https://') ||
         token.startsWith('tg://') ||
-        /^[A-Z0-9_]{3,}$/.test(token)
+        /^[\d:./%+\-()[\]#]+$/.test(token) ||
+        token === 'AES-256-GCM'
       ) {
         return token;
       }
@@ -203,7 +204,7 @@ export const KEYBOARDS = {
     if (isAdmin) {
       rows.push([
         { text: toSmallCaps('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' },
-        { text: toSmallCaps('👑 Admin Panel'), callback_data: 'menu:owner', style: 'danger' },
+        { text: toSmallCaps('👑 Bot Owner'), callback_data: 'menu:owner', style: 'primary' },
       ]);
     } else {
       rows.push([{ text: toSmallCaps('📚 Help & Commands'), callback_data: 'menu:help', style: 'primary' }]);

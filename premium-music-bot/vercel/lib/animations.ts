@@ -1,4 +1,4 @@
-import { DIVIDER, editMessageText, sendChatAction, sendMessage, toSmallCaps, type InlineKeyboardMarkup } from './telegram';
+import { editMessageText, sendChatAction, sendMessage, toSmallCaps, type InlineKeyboardMarkup } from './telegram';
 
 const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
 
@@ -22,19 +22,10 @@ function makeEqualizerFrames(startLabel: string, endLabel: string): string[] {
   ];
 }
 
-function makePlayDeckFrames(): string[] {
-  return [
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>⚡ <b>${toSmallCaps('INITIALIZING AUDIO ENGINE...')}</b>\n◈──────────  <b>25%</b>  [ʟ/ʀ sʏɴᴄ]</blockquote>`,
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>🎛️ <b>${toSmallCaps('CALIBRATING FFMPEG DSP...')}</b>\n━━━◈───────  <b>50%</b>  [▮▮▮▯▯▯]</blockquote>`,
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>🔥 <b>${toSmallCaps('LOADING HD STREAM CHANNELS...')}</b>\n━━━━━━◈────  <b>75%</b>  [▮▮▮▮▮▯]</blockquote>`,
-    `🎧 <b>${toSmallCaps('MUSIC STUDIO DECK')}</b>\n${DIVIDER}\n<blockquote>✨ <b>${toSmallCaps('STUDIO READY · 48KHZ HI-FI')}</b>\n━━━━━━━━━━◈  <b>100%</b> [▮▮▮▮▮▮]</blockquote>`,
-  ];
-}
-
 export const EQUALIZER_PRESETS = {
   welcome: makeEqualizerFrames('⚡ Booting Music Spam Bot...', '🎧 Syncing Live Controls...'),
   joinLive: [toSmallCaps('🎤 Connecting Voice Chat...'), toSmallCaps('🔊 Syncing Live Stream...')],
-  playMusic: makePlayDeckFrames(),
+  playMusic: [toSmallCaps('🎵 Fetching Audio...'), toSmallCaps('🔥 Tuning FFmpeg Stream...')],
   volume: [toSmallCaps('🎚️ Opening Volume Control...'), toSmallCaps('🔥 Volume Range: 10% – 200%...')],
   searchMusic: [toSmallCaps('🔍 Searching Track...'), toSmallCaps('🔥 Matching Songs...')],
 };

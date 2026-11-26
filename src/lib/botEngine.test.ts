@@ -33,17 +33,17 @@ test('formatBangladeshDateTime uses Asia/Dhaka 12-hour AM/PM schedule', () => {
   assert.ok(bd.dateStr.includes('26') && bd.dateStr.includes('Nov') && bd.dateStr.includes('2026'));
 });
 
-test('/start keeps equalizer animation and reference blockquote card while hiding Admin button from non-admins', () => {
+test('/start keeps equalizer animation and clean welcome screen while hiding Admin button from non-admins', () => {
   const initial = createInitialBotState();
   assert.equal(initial.botUsername, 'MUSIC SPAM BOT');
   assert.deepEqual(
     initial.messages[0].inlineKeyboard?.map((row) => row.length),
     [2, 2, 2, 2],
   );
-  assert.ok(initial.messages[0].text.includes('<blockquote>'));
-  assert.ok(initial.messages[0].text.includes('━━━━━━━━━━━━━━━━━━━━'));
+  assert.ok(initial.messages[0].text.includes('ᴡᴇʟᴄᴏᴍᴇ ᴛᴏ ᴍᴜsɪᴄ sᴘᴀᴍ ʙᴏᴛ'));
+  assert.equal(initial.messages[0].text.includes('<blockquote>'), false);
 
-  // Admin /start shows equalizer + Admin Panel button
+  // Admin /start shows equalizer + Bot Owner button
   const adminStart = processBotInput(initial, '/start', { senderRole: 'owner' });
   const adminMsg = adminStart.messages[adminStart.messages.length - 1];
   assert.equal(adminMsg.animationFrames?.length, 6);
@@ -54,7 +54,7 @@ test('/start keeps equalizer animation and reference blockquote card while hidin
     true,
   );
 
-  // Member /start hides Admin Panel button completely
+  // Member /start hides Bot Owner button completely
   const memberStart = processBotInput(initial, '/start', { senderRole: 'member' });
   const memberMsg = memberStart.messages[memberStart.messages.length - 1];
   assert.equal(
@@ -67,20 +67,19 @@ test('/start keeps equalizer animation and reference blockquote card while hidin
   );
 });
 
-test('Play Music uses upgraded professional Studio Deck animation distinct from /start equalizer', () => {
+test('Play Music uses original Fetching Audio / Tuning FFmpeg Stream animation', () => {
   let state = createInitialBotState();
   state = processBotInput(state, 'cmd:play_prompt', { isCallback: true });
   const promptMsg = state.messages[state.messages.length - 1];
-  assert.equal(promptMsg.animationFrames?.length, 5);
-  assert.ok(promptMsg.animationFrames?.[0]?.includes('25%'));
-  assert.ok(promptMsg.animationFrames?.[3]?.includes('100%'));
-  assert.equal(promptMsg.animationFrames?.some((f) => f.includes('▁▂▃▄▅▆▇') || f.includes('▰▱▱▱▱')), false);
+  assert.equal(promptMsg.animationFrames?.length, 3);
+  assert.ok(promptMsg.animationFrames?.[0]?.includes('ғᴇᴛᴄʜɪɴɢ'));
+  assert.ok(promptMsg.animationFrames?.[1]?.includes('ᴛᴜɴɪɴɢ'));
 
   state = processBotInput(state, '/play Midnight Signal');
   assert.equal(state.playback.status, 'playing');
   const playMsg = state.messages[state.messages.length - 1];
-  assert.equal(playMsg.animationFrames?.length, 5);
-  assert.equal(playMsg.animationFrames?.some((f) => f.includes('▁▂▃▄▅▆▇') || f.includes('▰▱▱▱▱')), false);
+  assert.equal(playMsg.animationFrames?.length, 3);
+  assert.ok(playMsg.text.includes('ɴᴏᴡ ᴘʟᴀʏɪɴɢ'));
 });
 
 test('Admin-only access control, Maintenance mode, User block/unblock, and New User Joined BD alert', () => {
@@ -88,17 +87,16 @@ test('Admin-only access control, Maintenance mode, User block/unblock, and New U
 
   // Regular user cannot open Admin panel or run admin commands
   const deniedCallback = processBotInput(state, 'cmd:owner', { isCallback: true, senderRole: 'member' });
-  assert.ok(deniedCallback.messages[deniedCallback.messages.length - 1].text.includes('ACCESS DENIED') ||
-    deniedCallback.messages[deniedCallback.messages.length - 1].text.includes('ᴀᴄᴄᴇss ᴅᴇɴɪᴇᴅ'));
+  assert.ok(deniedCallback.messages[deniedCallback.messages.length - 1].text.includes('ᴀᴅᴍɪɴ ᴏʀ ᴏᴡɴᴇʀ'));
 
   const deniedCmd = processBotInput(state, '/broadcast hello', { senderRole: 'member' });
-  assert.ok(deniedCmd.messages[deniedCmd.messages.length - 1].text.includes('ACCESS DENIED'));
+  assert.ok(deniedCmd.messages[deniedCmd.messages.length - 1].text.includes('ᴀᴅᴍɪɴ ᴏʀ ᴏᴡɴᴇʀ'));
 
   // Admin turns Bot OFF (Maintenance Mode ON)
   state = processBotInput(state, 'owner:toggle_maintenance', { isCallback: true, senderRole: 'owner' });
   assert.equal(state.maintenanceMode, true);
 
-  // Regular member gets formatted Maintenance card on /start
+  // Regular member gets formatted Maintenance notice on /start
   const memberMaint = processBotInput(state, '/start', { senderRole: 'member' });
   const maintMsg = memberMaint.messages[memberMaint.messages.length - 1];
   assert.equal(maintMsg.kind, 'maintenance');

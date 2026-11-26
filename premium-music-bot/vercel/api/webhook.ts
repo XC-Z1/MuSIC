@@ -3,7 +3,6 @@ import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { EQUALIZER_PRESETS, TELEGRAM_EFFECTS, sendEffectMessage } from '../lib/animations';
 import { callAudioBackend } from '../lib/backendClient';
 import {
-  DIVIDER,
   KEYBOARDS,
   answerCallbackQuery,
   editMessageText,
@@ -268,19 +267,21 @@ async function notifyAdminsNewUser(
   const fullName = escapeHtml(displayNameOf(user));
   const handle = user.username ? `@${escapeHtml(user.username.replace(/^@/, ''))}` : toSmallCaps('No Username');
   const caption = [
-    `🆕 <b>${toSmallCaps('NEW USER JOINED BOT')}</b>`,
-    DIVIDER,
+    toSmallCaps('🆕 New User Joined Bot'),
     '',
-    `<blockquote>👤 <b>${toSmallCaps('NAME')}:</b> <a href="tg://user?id=${user.id}">${fullName}</a>\n🔗 <b>${toSmallCaps('USERNAME')}:</b> ${handle}\n🪪 <b>${toSmallCaps('CHAT ID')}:</b> <code>${chatId}</code>\n📅 <b>${toSmallCaps('DATE (BD)')}:</b> ${bd.dateStr}\n🕒 <b>${toSmallCaps('TIME (BD 12H)')}:</b> ${bd.timeStr}\n👥 <b>${toSmallCaps('TOTAL USERS')}:</b> #${totalUsers}</blockquote>`,
-    '',
-    `🔐 <b>${toSmallCaps('QUICK ADMIN ACTIONS')}:</b>`,
+    `${toSmallCaps('👤 Name:')} <a href="tg://user?id=${user.id}">${fullName}</a>`,
+    `${toSmallCaps('🔗 Username:')} ${handle}`,
+    `${toSmallCaps('🪪 Chat ID:')} <code>${chatId}</code>`,
+    `${toSmallCaps('📅 Date (BD):')} ${bd.dateStr}`,
+    `${toSmallCaps('🕒 Time (BD 12h):')} ${bd.timeStr}`,
+    `${toSmallCaps('👥 Total Users:')} #${totalUsers}`,
   ].join('\n');
 
   const markup: InlineKeyboardMarkup = {
     inline_keyboard: [
       [
         { text: toSmallCaps('🚫 Block User'), callback_data: `admin:block:${user.id}:0`, style: 'danger' },
-        { text: toSmallCaps('👑 Admin Panel'), callback_data: 'menu:owner', style: 'primary' },
+        { text: toSmallCaps('👑 Bot Owner'), callback_data: 'menu:owner', style: 'primary' },
       ],
     ],
   };
@@ -316,42 +317,35 @@ function buildWelcomeText(options: {
   hasWorker: boolean;
   maintenanceMode: boolean;
 }): string {
-  const uid = options.user?.id ?? 0;
-  const name = escapeHtml(displayNameOf(options.user));
-  const status = options.isAdmin ? '👑 ᴀᴅᴍɪɴ' : '✅ ᴠᴇʀɪғɪᴇᴅ';
-  const workerBadge = options.hasWorker ? '🟢 ʟɪɴᴋᴇᴅ' : '⚪ ᴘᴇɴᴅɪɴɢ';
-  const maintRow =
-    options.isAdmin && options.maintenanceMode
-      ? `\n⚠️ <b>${toSmallCaps('BOT MODE')}:</b> 🔴 ${toSmallCaps('MAINTENANCE (OFF FOR USERS)')}`
-      : '';
-  return [
-    `🎧 <b>${toSmallCaps('MUSIC SPAM BOT')}</b>`,
-    DIVIDER,
+  const lines = [
+    toSmallCaps('🎧 Welcome To Music Spam Bot'),
     '',
-    `👋 <b>${toSmallCaps('WELCOME')}, <a href="tg://user?id=${uid}">${name}</a>!</b>`,
-    '',
-    `<blockquote>🪪 <b>${toSmallCaps('USER ID')}:</b> <code>${uid}</code>\n🔗 <b>${toSmallCaps('STATUS')}:</b> ${status}\n🖥️ <b>${toSmallCaps('AUDIO WORKER')}:</b> ${workerBadge}\n⚡ <b>${toSmallCaps('ALERTS')}:</b> 🟢 ${toSmallCaps('ACTIVE')}${maintRow}</blockquote>`,
-    '',
-    `🎶 <b>${toSmallCaps('Stream HD music, auto-join live voice chats, boost ffmpeg volume 10%–200%, and control personal playback.')}</b>`,
-    '',
-    `🔐 <b>${toSmallCaps('SELECT AN OPTION BELOW')}:</b>`,
-  ].join('\n');
+    toSmallCaps('🎶 Your Music, Your World!'),
+    toSmallCaps('✨ Premium Music Experience'),
+    toSmallCaps('⚡ Ultra Fast Performance'),
+    toSmallCaps('🎚️ Advanced Music Controls'),
+    toSmallCaps('🎤 Auto Live Join System'),
+    toSmallCaps('🎧 Personal Account Control'),
+    toSmallCaps('🔥 Smart Music Streaming'),
+  ];
+  if (options.isAdmin && options.maintenanceMode) {
+    lines.push('', toSmallCaps('⚠️ Maintenance Mode: Active (Bot OFF for users)'));
+  }
+  return lines.join('\n');
 }
 
 function buildMaintenanceText(user?: TelegramUser): string {
-  const uid = user?.id ?? 0;
-  const name = escapeHtml(displayNameOf(user));
+  const name = displayNameOf(user);
   const bd = formatBangladeshDateTime();
   return [
-    `🛠️ <b>${toSmallCaps('MAINTENANCE MODE')}</b>`,
-    DIVIDER,
+    toSmallCaps('🛠️ Bot Maintenance Mode'),
     '',
-    `👋 <b>${toSmallCaps('HELLO')}, <a href="tg://user?id=${uid}">${name}</a>!</b>`,
+    toSmallCaps(`👋 Hello, ${name}!`),
+    toSmallCaps('🚦 Status: Offline (Scheduled Maintenance)'),
+    toSmallCaps(`📅 Date (BD): ${bd.dateStr}`),
+    toSmallCaps(`🕒 Time (BD 12h): ${bd.timeStr}`),
     '',
-    `<blockquote>🚦 <b>${toSmallCaps('BOT STATUS')}:</b> 🔴 ${toSmallCaps('OFFLINE (MAINTENANCE)')}\n🪪 <b>${toSmallCaps('YOUR ID')}:</b> <code>${uid}</code>\n📅 <b>${toSmallCaps('DATE (BD)')}:</b> ${bd.dateStr}\n🕒 <b>${toSmallCaps('TIME (BD 12H)')}:</b> ${bd.timeStr}</blockquote>`,
-    '',
-    `⚙️ <b>${toSmallCaps('The bot is currently under scheduled maintenance and studio upgrades.')}</b>`,
-    `✨ <i>${toSmallCaps('Please try again shortly — service will resume soon!')}</i>`,
+    toSmallCaps('✨ Service will resume shortly. Please check again soon!'),
   ].join('\n');
 }
 
@@ -359,12 +353,14 @@ async function renderAdminPanelText(cfg: BotConfigState): Promise<string> {
   const st = await callAudioBackend<{ cpu_percent?: number; ram_percent?: number }>('/health', {}, 'GET');
   const bd = formatBangladeshDateTime();
   return [
-    `👑 <b>${toSmallCaps('ADMIN CONTROL PANEL')}</b>`,
-    DIVIDER,
+    toSmallCaps('👑 Bot Owner Dashboard'),
     '',
-    `<blockquote>🤖 <b>${toSmallCaps('BOT STATUS')}:</b> ${cfg.maintenance_mode ? '🔴 OFF (Maintenance)' : '🟢 ONLINE'}\n👥 <b>${toSmallCaps('TOTAL USERS')}:</b> <code>${cfg.total_users}</code> (✅ ${cfg.active_users} · 🚫 ${cfg.blocked_users})\n🎵 <b>${toSmallCaps('TOTAL PLAYS')}:</b> <code>${cfg.total_plays}</code>\n🖥️ <b>${toSmallCaps('AUDIO WORKER')}:</b> ${st.ok ? '🟢 Online' : st.configured ? '🔴 Offline' : '⚪ Not Linked'}${st.ok && st.data ? `\n⚡ <b>${toSmallCaps('CPU / RAM')}:</b> <code>${st.data.cpu_percent ?? 0}% / ${st.data.ram_percent ?? 0}%</code>` : ''}\n🕒 <b>${toSmallCaps('BD TIME (12H)')}:</b> ${bd.timeStr}</blockquote>`,
-    '',
-    `🔐 <b>${toSmallCaps('SELECT AN ADMIN ACTION')}:</b>`,
+    `${toSmallCaps('🤖 Bot Status:')} ${cfg.maintenance_mode ? toSmallCaps('🔴 OFF (Maintenance)') : toSmallCaps('🟢 Online')}`,
+    `${toSmallCaps('👥 Total Users:')} ${cfg.total_users} (✅ ${cfg.active_users} · 🚫 ${cfg.blocked_users})`,
+    `${toSmallCaps('🎵 Total Music Played:')} ${cfg.total_plays}`,
+    `${toSmallCaps('⚡ Audio Worker:')} ${st.ok ? toSmallCaps('🟢 Online') : st.configured ? toSmallCaps('🔴 Offline') : toSmallCaps('⚪ Not Linked')}`,
+    ...(st.ok && st.data ? [`${toSmallCaps('🖥️ CPU / RAM:')} ${st.data.cpu_percent ?? 0}% / ${st.data.ram_percent ?? 0}%`] : []),
+    `${toSmallCaps('🕒 BD Time (12h):')} ${bd.timeStr}`,
   ].join('\n');
 }
 
@@ -374,10 +370,15 @@ function renderUserDetailCard(u: StoredUser): { text: string; markup: InlineKeyb
   const name = escapeHtml(`${u.first_name} ${u.last_name}`.trim() || 'Telegram User');
   const handle = u.username ? `@${escapeHtml(u.username)}` : toSmallCaps('No Username');
   const text = [
-    `👤 <b>${toSmallCaps('USER PROFILE & STATUS')}</b>`,
-    DIVIDER,
+    toSmallCaps('👤 User Profile & Status'),
     '',
-    `<blockquote>📛 <b>${toSmallCaps('NAME')}:</b> <a href="tg://user?id=${u.user_id}">${name}</a>\n🔗 <b>${toSmallCaps('USERNAME')}:</b> ${handle}\n🪪 <b>${toSmallCaps('CHAT ID')}:</b> <code>${u.chat_id}</code>\n🚦 <b>${toSmallCaps('STATUS')}:</b> ${u.is_blocked ? '🚫 BLOCKED' : '✅ ACTIVE'}\n🎵 <b>${toSmallCaps('PLAYS')}:</b> <code>${u.plays_count}</code>\n📅 <b>${toSmallCaps('JOINED (BD)')}:</b> ${bdJoined.fullStr}\n🕒 <b>${toSmallCaps('LAST SEEN (BD)')}:</b> ${bdSeen.fullStr}</blockquote>`,
+    `${toSmallCaps('📛 Name:')} <a href="tg://user?id=${u.user_id}">${name}</a>`,
+    `${toSmallCaps('🔗 Username:')} ${handle}`,
+    `${toSmallCaps('🪪 Chat ID:')} <code>${u.chat_id}</code>`,
+    `${toSmallCaps('🚦 Status:')} ${u.is_blocked ? toSmallCaps('🚫 Blocked') : toSmallCaps('✅ Active')}`,
+    `${toSmallCaps('🎵 Plays:')} ${u.plays_count}`,
+    `${toSmallCaps('📅 Joined (BD):')} ${bdJoined.fullStr}`,
+    `${toSmallCaps('🕒 Last Seen (BD):')} ${bdSeen.fullStr}`,
   ].join('\n');
 
   const markup: InlineKeyboardMarkup = {
@@ -389,7 +390,7 @@ function renderUserDetailCard(u: StoredUser): { text: string; markup: InlineKeyb
       ],
       [
         { text: toSmallCaps('👥 Users List'), callback_data: 'admin:users:0', style: 'primary' },
-        { text: toSmallCaps('👑 Admin Panel'), callback_data: 'menu:owner', style: 'primary' },
+        { text: toSmallCaps('👑 Bot Owner'), callback_data: 'menu:owner', style: 'primary' },
       ],
     ],
   };
@@ -398,12 +399,7 @@ function renderUserDetailCard(u: StoredUser): { text: string; markup: InlineKeyb
 
 async function runBroadcast(messageText: string): Promise<{ sent: number; failed: number; total: number }> {
   const targets = await getBroadcastTargets();
-  const formatted = [
-    `📢 <b>${toSmallCaps('ANNOUNCEMENT')}</b>`,
-    DIVIDER,
-    '',
-    `<blockquote>${escapeHtml(messageText)}</blockquote>`,
-  ].join('\n');
+  const formatted = `${toSmallCaps('📢 Broadcast')}\n\n${escapeHtml(messageText)}`;
   let sent = 0;
   let failed = 0;
   for (const t of targets) {
@@ -444,20 +440,23 @@ function getWorkerDiagnosticText(actionLabel?: string): string {
   );
   const hasWorker = Boolean(process.env.AUDIO_BACKEND_URL && process.env.AUDIO_BACKEND_API_SECRET);
   return [
-    actionLabel ? `⚡ <b>${toSmallCaps('ACTION')}:</b> ${escapeHtml(actionLabel)}` : '',
-    `<blockquote>🤖 <b>${toSmallCaps('BOT WEBHOOK')}:</b> ✅ ${toSmallCaps('Online (Vercel)')}\n🔑 <b>${toSmallCaps('API ID / HASH')}:</b> ${hasApiCreds ? '✅ Found' : '⚪ Add in Vercel & Redeploy'}\n🖥️ <b>${toSmallCaps('AUDIO WORKER')}:</b> ${hasWorker ? '✅ Linked' : '❌ Not Linked Yet'}</blockquote>`,
+    actionLabel ? toSmallCaps(`⚡ ${actionLabel}`) : '',
+    `${toSmallCaps('🤖 Bot Webhook:')} ${toSmallCaps('✅ Online (Vercel)')}`,
+    `${toSmallCaps('🔑 API ID / Hash:')} ${hasApiCreds ? toSmallCaps('✅ Found') : toSmallCaps('⚪ Add in Vercel & Redeploy')}`,
+    `${toSmallCaps('🖥️ Audio Worker:')} ${hasWorker ? toSmallCaps('✅ Linked') : toSmallCaps('❌ Not Linked Yet')}`,
+    '',
     hasWorker
-      ? toSmallCaps('Audio Worker is linked! Open https://<your-worker-url>/setup in Chrome if you still need OTP login, or tap Connect.')
+      ? toSmallCaps('Audio Worker is linked! Open https://<your-worker-url>/setup in Chrome if you still need OTP login.')
       : [
-          `ℹ️ <b>${toSmallCaps('Free Docker Audio Worker Setup (No VPS needed)')}:</b>`,
-          `1️⃣ ${toSmallCaps('Deploy premium-music-bot/backend on Hugging Face Spaces (Docker) / Render / Koyeb')}`,
-          `2️⃣ ${toSmallCaps('Set TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN & AUDIO_BACKEND_API_SECRET')}`,
-          `3️⃣ ${toSmallCaps('Open https://<your-worker-url>/setup in Chrome on your phone to sign in with OTP')}`,
-          `4️⃣ ${toSmallCaps('Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel & Redeploy.')}`,
+          toSmallCaps('ℹ️ Free Docker Audio Worker Setup:'),
+          toSmallCaps('1️⃣ Deploy premium-music-bot/backend on Hugging Face Spaces (Docker) / Render / Koyeb'),
+          toSmallCaps('2️⃣ Set TELEGRAM_API_ID, TELEGRAM_API_HASH, TELEGRAM_BOT_TOKEN & AUDIO_BACKEND_API_SECRET'),
+          toSmallCaps('3️⃣ Open https://<your-worker-url>/setup in Chrome to sign in with OTP'),
+          toSmallCaps('4️⃣ Add AUDIO_BACKEND_URL & AUDIO_BACKEND_API_SECRET to Vercel & Redeploy.'),
         ].join('\n'),
   ]
-    .filter(Boolean)
-    .join('\n\n');
+    .filter((v) => v !== '')
+    .join('\n');
 }
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
@@ -576,14 +575,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           KEYBOARDS.mainMenu(isAdmin),
         );
       } else if (data === 'menu:play') {
-        await answerCallbackQuery(cq.id, 'Opening Studio Deck...');
+        await answerCallbackQuery(cq.id, 'Opening Music Player...');
         const guide = [
-          `🎵 <b>${toSmallCaps('HOW TO SELECT & PLAY MUSIC')}</b>`,
-          DIVIDER,
+          toSmallCaps('🎵 Play Music'),
           '',
-          `<blockquote>1️⃣ <b>${toSmallCaps('SEARCH & PICK')}:</b> <code>/search Kesariya</code>\n2️⃣ <b>${toSmallCaps('INSTANT PLAY')}:</b> <code>/play Faded Alan Walker</code>\n3️⃣ <b>${toSmallCaps('LINK / AUDIO')}:</b> ${toSmallCaps('Send a YouTube, SoundCloud, or MP3 file directly.')}</blockquote>`,
+          toSmallCaps('1️⃣ /search <song> — Pick from top 5 songs'),
+          toSmallCaps('2️⃣ /play <song or link> — Play immediately'),
+          toSmallCaps('3️⃣ Send any MP3 / Audio / Voice file directly'),
         ].join('\n');
-        await sendEffectMessage(chatId, chatType, guide, KEYBOARDS.player(false), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic, 180);
+        await sendEffectMessage(chatId, chatType, guide, KEYBOARDS.player(false), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic);
       } else if (data.startsWith('pick:')) {
         const rawRef = data.slice(5);
         const source = rawRef.startsWith('yt:') ? `https://www.youtube.com/watch?v=${rawRef.slice(3)}` : rawRef;
@@ -595,9 +595,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         });
         if (pRes.ok) await callAudioBackend('/bot/stats/play', { user_id: cq.from.id }).catch(() => undefined);
         const text = pRes.ok
-          ? `🎧 <b>${toSmallCaps('NOW PLAYING')}</b>\n${DIVIDER}\n\n<blockquote>🎵 <b>${toSmallCaps('SONG')}:</b> ${escapeHtml(String(pRes.data?.title || source))}\n▶️ <b>${toSmallCaps('STATUS')}:</b> ${toSmallCaps('Playing')}</blockquote>`
+          ? `${toSmallCaps('🎧 Now Playing')}\n\n${toSmallCaps('🎵 Song:')} ${escapeHtml(String(pRes.data?.title || source))}\n${toSmallCaps('▶️ Status:')} ${toSmallCaps('Playing')}`
           : `❌ ${escapeHtml(String(pRes.error || 'Error'))}`;
-        await sendEffectMessage(chatId, chatType, text, KEYBOARDS.player(pRes.ok), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic, 180);
+        await sendEffectMessage(chatId, chatType, text, KEYBOARDS.player(pRes.ok), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic);
       } else if (data === 'menu:player' || data === 'menu:nowplaying' || data === 'menu:queue') {
         await answerCallbackQuery(cq.id);
         const st = await callAudioBackend<{
@@ -605,19 +605,22 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           volume?: number; muted?: boolean; status?: string; chat_title?: string;
         }>(`/player/status?chat_id=${chatId}`, {}, 'GET');
         if (!st.ok || !st.data) {
-          await editMessageText(chatId, msgId, `🎧 <b>${toSmallCaps('MUSIC PLAYER')}</b>\n${DIVIDER}\n\n${getWorkerDiagnosticText('Music Player')}`, KEYBOARDS.mainMenu(isAdmin));
+          await editMessageText(chatId, msgId, `${toSmallCaps('🎧 Music Player')}\n\n${getWorkerDiagnosticText('Music Player')}`, KEYBOARDS.mainMenu(isAdmin));
         } else {
           const d = st.data;
           const text = d.title
             ? [
-                `🎧 <b>${toSmallCaps('NOW PLAYING')}</b>`,
-                DIVIDER,
+                toSmallCaps('🎧 Now Playing'),
                 '',
-                `<blockquote>🎵 <b>${toSmallCaps('SONG')}:</b> ${escapeHtml(d.title)}\n👤 <b>${toSmallCaps('ARTIST')}:</b> ${escapeHtml(d.artist || 'Unknown')}\n⏱️ <b>${toSmallCaps('DURATION')}:</b> <code>${d.position ?? 0}s / ${d.duration ?? 0}s</code>\n🔊 <b>${toSmallCaps('VOLUME')}:</b> <code>${d.muted ? 'Muted' : `${d.volume ?? 80}%`}</code>\n▶️ <b>${toSmallCaps('STATUS')}:</b> ${escapeHtml(d.status || 'Playing')}</blockquote>`,
+                `${toSmallCaps('🎵 Song:')} ${escapeHtml(d.title)}`,
+                `${toSmallCaps('👤 Artist:')} ${escapeHtml(d.artist || 'Unknown')}`,
+                `${toSmallCaps('⏱️ Duration:')} ${d.position ?? 0}s / ${d.duration ?? 0}s`,
+                `${toSmallCaps('🔊 Volume:')} ${d.muted ? toSmallCaps('Muted') : `${d.volume ?? 80}%`}`,
+                `${toSmallCaps('▶️ Status:')} ${toSmallCaps(d.status || 'Playing')}`,
                 '',
-                `<code>${buildProgressBar(d.position ?? 0, d.duration ?? 100)}</code>`,
+                buildProgressBar(d.position ?? 0, d.duration ?? 100),
               ].join('\n')
-            : `🎧 <b>${toSmallCaps('MUSIC PLAYER')}</b>\n${DIVIDER}\n\n<blockquote>💤 ${toSmallCaps('No active track. Send /search <song> or /play <url>.')}</blockquote>`;
+            : `${toSmallCaps('🎧 Music Player')}\n\n${toSmallCaps('💤 No active track. Send /search <song> or /play <url>.')}`;
           await editMessageText(chatId, msgId, text, KEYBOARDS.player(d.status === 'playing'));
         }
       } else if (data === 'menu:volume') {
@@ -626,7 +629,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const fallback = chatVolumeFallback.get(String(chatId)) ?? { volume: 80, muted: false };
         const vol = volRes.ok && volRes.data ? clampVol(volRes.data.volume) : fallback.volume;
         const muted = volRes.ok && volRes.data ? Boolean(volRes.data.muted) : fallback.muted;
-        const vText = `🎚️ <b>${toSmallCaps('VOLUME CONTROL')}</b>\n${DIVIDER}\n\n<blockquote>🔊 <b>${toSmallCaps('GAIN')}:</b> <code>&lt;  ${muted ? '🔇 Muted' : `🔊 ${vol}%`}  &gt;</code>\n⚡ <b>${toSmallCaps('RANGE')}:</b> 10% – 200% (FFmpeg Real-Time)</blockquote>`;
+        const vText = `${toSmallCaps('🎚️ Volume Control')}\n\n${toSmallCaps('Current Gain:')} <  ${muted ? `🔇 ${toSmallCaps('Muted')}` : `🔊 ${vol}%`}  >\n${toSmallCaps('Range: 10% – 200% (FFmpeg Real-Time)')}`;
         await sendEffectMessage(chatId, chatType, vText, KEYBOARDS.volume(), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.volume);
       } else if (data.startsWith('vol:')) {
         const action = data.slice(4);
@@ -639,13 +642,13 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
             ? { volume: clampVol(resVol.data.volume), muted: Boolean(resVol.data.muted) }
             : applyFallbackVolume(chatId, action, cq.message?.text);
         await answerCallbackQuery(cq.id, nextVol.muted ? 'Audio Muted' : `Volume: ${nextVol.volume}% (10%–200%)`);
-        const vText = `🎚️ <b>${toSmallCaps('VOLUME CONTROL')}</b>\n${DIVIDER}\n\n<blockquote>🔊 <b>${toSmallCaps('GAIN')}:</b> <code>&lt;  ${nextVol.muted ? '🔇 Muted' : `🔊 ${nextVol.volume}%`}  &gt;</code>\n⚡ <b>${toSmallCaps('RANGE')}:</b> 10% – 200% (FFmpeg Real-Time)</blockquote>`;
+        const vText = `${toSmallCaps('🎚️ Volume Control')}\n\n${toSmallCaps('Current Gain:')} <  ${nextVol.muted ? `🔇 ${toSmallCaps('Muted')}` : `🔊 ${nextVol.volume}%`}  >\n${toSmallCaps('Range: 10% – 200% (FFmpeg Real-Time)')}`;
         await editMessageText(chatId, msgId, vText, KEYBOARDS.volume());
       } else if (data.startsWith('player:')) {
         const action = data.slice(7);
         const pRes = await callAudioBackend<{ status?: string; title?: string }>(`/player/${action}`, { chat_id: chatId });
         await answerCallbackQuery(cq.id, pRes.ok ? `Playback: ${action.toUpperCase()}` : pRes.error, !pRes.ok);
-        const text = pRes.ok ? `🎧 <b>${toSmallCaps('PLAYBACK')}:</b> ${action.toUpperCase()}` : `🎧 <b>${toSmallCaps('PLAYBACK')}</b>\n${DIVIDER}\n\n${getWorkerDiagnosticText()}`;
+        const text = pRes.ok ? `${toSmallCaps('🎧 Playback:')} ${toSmallCaps(action)}` : `${toSmallCaps('🎧 Playback')}\n\n${getWorkerDiagnosticText()}`;
         await editMessageText(chatId, msgId, text, KEYBOARDS.player(action === 'resume'));
       } else if (data === 'menu:live' || data === 'live:join_hint') {
         await answerCallbackQuery(
@@ -655,8 +658,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         );
         const lRes = await callAudioBackend<{ active: boolean; group_title?: string }>('/live/status', {}, 'GET');
         const text = lRes.ok && lRes.data?.active
-          ? `🎤 <b>${toSmallCaps('LIVE CONNECTED')}</b>\n${DIVIDER}\n\n<blockquote>✅ ${toSmallCaps('Personal Account: Connected')}\n🎧 ${toSmallCaps('Voice Chat: Active')} (${escapeHtml(lRes.data.group_title || 'Group')})</blockquote>`
-          : `🎤 <b>${toSmallCaps('LIVE CONTROL PANEL')}</b>\n${DIVIDER}\n\n<blockquote>${toSmallCaps('Send /joinlive https://t.me/group/123 (or paste link directly).')}</blockquote>${hasWorker ? '' : `\n\n${getWorkerDiagnosticText('Auto Live Join')}`}`;
+          ? `${toSmallCaps('🎤 Live Connected')}\n\n${toSmallCaps('✅ Personal Account: Connected')}\n${toSmallCaps('🎧 Voice Chat: Active')} (${escapeHtml(lRes.data.group_title || 'Group')})`
+          : `${toSmallCaps('🎤 Live Control Panel')}\n\n${toSmallCaps('Send /joinlive https://t.me/group/123 (or paste link directly).')}${hasWorker ? '' : `\n\n${getWorkerDiagnosticText('Auto Live Join')}`}`;
         await editMessageText(chatId, msgId, text, KEYBOARDS.live());
       } else if (data === 'live:leave') {
         const lRes = await callAudioBackend('/live/leave', { chat_id: chatId });
@@ -667,8 +670,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const aRes = await callAudioBackend<{ display_name?: string; username?: string; status?: string }>(`/account/${op}`, {}, op === 'status' ? 'GET' : 'POST');
         await answerCallbackQuery(cq.id, op === 'status' ? undefined : aRes.ok ? `Account ${op} completed.` : 'Audio Worker not linked yet!', op !== 'status' && !aRes.ok);
         const text = aRes.ok && aRes.data
-          ? `👤 <b>${toSmallCaps('PERSONAL ACCOUNT')}</b>\n${DIVIDER}\n\n<blockquote>📛 <b>${toSmallCaps('NAME')}:</b> ${escapeHtml(aRes.data.display_name || 'Connected')}\n🔗 <b>${toSmallCaps('USERNAME')}:</b> ${escapeHtml(aRes.data.username || '@account')}\n⚡ <b>${toSmallCaps('STATUS')}:</b> ${escapeHtml((aRes.data.status || 'connected').toUpperCase())}</blockquote>`
-          : `👤 <b>${toSmallCaps('PERSONAL ACCOUNT CONTROL')}</b>\n${DIVIDER}\n\n${getWorkerDiagnosticText(`Account ${op.toUpperCase()}`)}`;
+          ? `${toSmallCaps('👤 Personal Account')}\n\n${toSmallCaps('📛 Name:')} ${escapeHtml(aRes.data.display_name || 'Connected')}\n${toSmallCaps('🔗 Username:')} ${escapeHtml(aRes.data.username || '@account')}\n${toSmallCaps('⚡ Status:')} ${toSmallCaps(aRes.data.status || 'connected')}`
+          : `${toSmallCaps('👤 Personal Account Control')}\n\n${getWorkerDiagnosticText(`Account ${op}`)}`;
         await editMessageText(chatId, msgId, text, KEYBOARDS.account());
       } else if (data === 'menu:owner') {
         await answerCallbackQuery(cq.id);
@@ -687,7 +690,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         const totalPages = Math.max(1, Math.ceil(listRes.total_users / 5));
         const lines = listRes.users.map((u) => {
           const bd = formatBangladeshDateTime(u.joined_at);
-          return `${u.is_blocked ? '🚫' : '✅'} <b>${escapeHtml(`${u.first_name} ${u.last_name}`.trim() || 'User')}</b> · <code>${u.user_id}</code> · 🕒 ${bd.timeStr}`;
+          return `${u.is_blocked ? '🚫' : '✅'} ${escapeHtml(`${u.first_name} ${u.last_name}`.trim() || 'User')} · <code>${u.user_id}</code> · 🕒 ${bd.timeStr}`;
         });
         const rows: InlineKeyboardButton[][] = listRes.users.map((u) => [
           { text: `${u.is_blocked ? '🚫' : '✅'} ${(u.first_name || 'User').slice(0, 18)} (${u.user_id})`, callback_data: `admin:user:${u.user_id}:${page}`, style: u.is_blocked ? 'danger' : 'primary' },
@@ -696,8 +699,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         if (page > 0) nav.push({ text: '⬅️ Prev', callback_data: `admin:users:${page - 1}`, style: 'primary' });
         if ((page + 1) * 5 < listRes.total_users) nav.push({ text: 'Next ➡️', callback_data: `admin:users:${page + 1}`, style: 'primary' });
         if (nav.length) rows.push(nav);
-        rows.push([{ text: toSmallCaps('🔙 Admin Panel'), callback_data: 'menu:owner', style: 'primary' }]);
-        await editMessageText(chatId, msgId, `👥 <b>${toSmallCaps('USER MANAGEMENT')}</b> (${page + 1}/${totalPages})\n${DIVIDER}\n\n<blockquote>${lines.join('\n\n') || toSmallCaps('No users yet.')}</blockquote>`, { inline_keyboard: rows });
+        rows.push([{ text: toSmallCaps('🔙 Bot Owner'), callback_data: 'menu:owner', style: 'primary' }]);
+        await editMessageText(chatId, msgId, `${toSmallCaps('👥 User Management')} (${page + 1}/${totalPages})\n\n${lines.join('\n\n') || toSmallCaps('No users yet.')}`, { inline_keyboard: rows });
       } else if (data.startsWith('admin:user:') || data.startsWith('admin:block:') || data.startsWith('admin:unblock:')) {
         const parts = data.split(':');
         const op = parts[1];
@@ -729,7 +732,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await editMessageText(
           chatId,
           msgId,
-          `📢 <b>${toSmallCaps('BROADCAST SYSTEM')}</b>\n${DIVIDER}\n\n<blockquote>📨 <b>${toSmallCaps('ACTIVE USERS')}:</b> <code>${tracked.active_users}</code>\n👉 ${toSmallCaps('Send your announcement message now, or type /broadcast <message>.')}</blockquote>`,
+          `${toSmallCaps('📢 Broadcast System')}\n\n${toSmallCaps('📨 Active Users:')} ${tracked.active_users}\n${toSmallCaps('Send your announcement message now, or type /broadcast <message>.')}`,
           { inline_keyboard: [[{ text: toSmallCaps('❌ Cancel'), callback_data: 'menu:owner', style: 'danger' }]] },
         );
       } else if (data === 'admin:lookup_prompt') {
@@ -738,7 +741,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await editMessageText(
           chatId,
           msgId,
-          `🔍 <b>${toSmallCaps('CHECK USER STATUS')}</b>\n${DIVIDER}\n\n<blockquote>🪪 ${toSmallCaps('Send the numeric User ID now, or type /user <id>.')}</blockquote>`,
+          `${toSmallCaps('🔍 Check User Status')}\n\n${toSmallCaps('🪪 Send the numeric User ID now, or type /user <id>.')}`,
           { inline_keyboard: [[{ text: toSmallCaps('❌ Cancel'), callback_data: 'menu:owner', style: 'danger' }]] },
         );
       } else if (data === 'menu:help') {
@@ -746,7 +749,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await editMessageText(
           chatId,
           msgId,
-          `📚 <b>${toSmallCaps('COMMAND REFERENCE')}</b>\n${DIVIDER}\n\n<blockquote>/start /search /play /pause /resume /skip /stop /queue /nowplaying /volume /mute /unmute /joinlive /leavelive /live /account /connect /disconnect /reconnect /ping</blockquote>`,
+          toSmallCaps('📚 Command Reference\n\n/start /search /play /pause /resume /skip /stop /queue /nowplaying /volume /mute /unmute /joinlive /leavelive /live /account /connect /disconnect /reconnect /ping'),
           KEYBOARDS.mainMenu(isAdmin),
         );
       } else {
@@ -776,7 +779,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           constantTimeMatch(arg, process.env.AUDIO_BACKEND_API_SECRET || '') ||
           constantTimeMatch(arg, process.env.TELEGRAM_WEBHOOK_SECRET || '');
         if (!secretValid) {
-          await sendEffectMessage(chatId, chatType, `⛔ <b>${toSmallCaps('Invalid admin claim secret.')}</b>`, KEYBOARDS.mainMenu(false), TELEGRAM_EFFECTS.thumbsDown);
+          await sendEffectMessage(chatId, chatType, toSmallCaps('⛔ Invalid admin claim secret.'), KEYBOARDS.mainMenu(false), TELEGRAM_EFFECTS.thumbsDown);
           return res.status(200).json({ ok: true });
         }
         const claimed = await claimAdminOwnership(msg.from.id);
@@ -784,8 +787,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           chatId,
           chatType,
           claimed
-            ? `👑 <b>${toSmallCaps('Admin Ownership Verified!')}</b>\n${DIVIDER}\n\n<blockquote>🪪 <code>${msg.from.id}</code>\n✅ ${toSmallCaps('Send /start to access Admin Panel.')}</blockquote>`
-            : `⛔ <b>${toSmallCaps('Admin ownership already claimed.')}</b>`,
+            ? `${toSmallCaps('👑 Admin Ownership Verified!')}\n\n🪪 <code>${msg.from.id}</code>\n${toSmallCaps('✅ Send /start to access Bot Owner.')}`
+            : toSmallCaps('⛔ Admin ownership already claimed.'),
           KEYBOARDS.mainMenu(Boolean(claimed)),
           claimed ? TELEGRAM_EFFECTS.confetti : TELEGRAM_EFFECTS.thumbsDown,
         );
@@ -805,7 +808,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await sendEffectMessage(
           chatId,
           chatType,
-          `🚫 <b>${toSmallCaps('ACCESS RESTRICTED')}</b>\n${DIVIDER}\n\n<blockquote>⛔ ${toSmallCaps('You have been blocked by Admin.')}</blockquote>`,
+          `${toSmallCaps('🚫 Access Restricted')}\n\n${toSmallCaps('⛔ You have been blocked by Admin.')}`,
           undefined,
           TELEGRAM_EFFECTS.thumbsDown,
         );
@@ -820,7 +823,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await sendEffectMessage(
             chatId,
             chatType,
-            `📢 <b>${toSmallCaps('BROADCAST COMPLETE')}</b>\n${DIVIDER}\n\n<blockquote>✅ ${result.sent} · ❌ ${result.failed} · 👥 ${result.total}</blockquote>`,
+            `${toSmallCaps('📢 Broadcast Complete')}\n\n✅ ${result.sent} · ❌ ${result.failed} · 👥 ${result.total}`,
             KEYBOARDS.adminPanel(tracked.maintenance_mode),
             TELEGRAM_EFFECTS.confetti,
           );
@@ -841,7 +844,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
 
       const adminCmds = ['/admin', '/owner', '/stats', '/status', '/users', '/user', '/block', '/unblock', '/broadcast', '/maintenance', '/boton', '/botoff'];
       if (!isAdmin && adminCmds.includes(cmd)) {
-        await sendEffectMessage(chatId, chatType, `⛔ <b>${toSmallCaps('ACCESS DENIED — ADMIN ONLY')}</b>`, KEYBOARDS.mainMenu(false), TELEGRAM_EFFECTS.thumbsDown);
+        await sendEffectMessage(chatId, chatType, toSmallCaps('⛔ Admin or Owner permissions required.'), KEYBOARDS.mainMenu(false), TELEGRAM_EFFECTS.thumbsDown);
         return res.status(200).json({ ok: true });
       }
 
@@ -878,7 +881,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           await sendEffectMessage(chatId, chatType, `📢 ${toSmallCaps('Send your broadcast message now, or type /broadcast <message>.')}`, KEYBOARDS.adminPanel(tracked.maintenance_mode), TELEGRAM_EFFECTS.thumbsUp);
         } else {
           const result = await runBroadcast(arg);
-          await sendEffectMessage(chatId, chatType, `📢 <b>${toSmallCaps('BROADCAST COMPLETE')}</b>\n${DIVIDER}\n\n<blockquote>✅ ${result.sent} · ❌ ${result.failed} · 👥 ${result.total}</blockquote>`, KEYBOARDS.adminPanel(tracked.maintenance_mode), TELEGRAM_EFFECTS.confetti);
+          await sendEffectMessage(chatId, chatType, `${toSmallCaps('📢 Broadcast Complete')}\n\n✅ ${result.sent} · ❌ ${result.failed} · 👥 ${result.total}`, KEYBOARDS.adminPanel(tracked.maintenance_mode), TELEGRAM_EFFECTS.confetti);
         }
       } else if (cmd === '/users' || cmd === '/user' || cmd === '/block' || cmd === '/unblock') {
         if (cmd === '/users') {
@@ -886,8 +889,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           const rows: InlineKeyboardButton[][] = listRes.users.map((u) => [
             { text: `${u.is_blocked ? '🚫' : '✅'} ${(u.first_name || 'User').slice(0, 18)} (${u.user_id})`, callback_data: `admin:user:${u.user_id}:0`, style: u.is_blocked ? 'danger' : 'primary' },
           ]);
-          rows.push([{ text: toSmallCaps('🔙 Admin Panel'), callback_data: 'menu:owner', style: 'primary' }]);
-          await sendEffectMessage(chatId, chatType, `👥 <b>${toSmallCaps('USER MANAGEMENT')}</b> (${listRes.total_users})`, { inline_keyboard: rows }, TELEGRAM_EFFECTS.thumbsUp);
+          rows.push([{ text: toSmallCaps('🔙 Bot Owner'), callback_data: 'menu:owner', style: 'primary' }]);
+          await sendEffectMessage(chatId, chatType, `${toSmallCaps('👥 User Management')} (${listRes.total_users})`, { inline_keyboard: rows }, TELEGRAM_EFFECTS.thumbsUp);
         } else {
           const targetId = Number(arg.replace(/\D/g, ''));
           if (!targetId) {
@@ -910,8 +913,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         } else {
           const joinRes = await callAudioBackend<{ group_title?: string }>('/live/join', { link, chat_id: chatId, requested_by: msg.from?.id });
           const finalText = joinRes.ok
-            ? `🎤 <b>${toSmallCaps('LIVE CONNECTED')}</b>\n${DIVIDER}\n\n<blockquote>✅ ${toSmallCaps('Personal Account: Connected')}\n🎧 ${toSmallCaps('Voice Chat: Active')}\n📍 ${escapeHtml(joinRes.data?.group_title || link)}</blockquote>`
-            : `❌ <b>${toSmallCaps('AUTO LIVE JOIN FAILED')}</b>\n${DIVIDER}\n\n${hasWorker ? escapeHtml(String(joinRes.error || '')) : getWorkerDiagnosticText('Auto Live Join')}`;
+            ? `${toSmallCaps('🎤 Live Connected')}\n\n${toSmallCaps('✅ Personal Account: Connected')}\n${toSmallCaps('🎧 Voice Chat: Active')}\n📍 ${escapeHtml(joinRes.data?.group_title || link)}`
+            : `${toSmallCaps('❌ Auto Live Join Failed')}\n\n${hasWorker ? escapeHtml(String(joinRes.error || '')) : getWorkerDiagnosticText('Auto Live Join')}`;
           await sendEffectMessage(chatId, chatType, finalText, KEYBOARDS.live(), TELEGRAM_EFFECTS.heart, EQUALIZER_PRESETS.joinLive);
         }
       } else if (cmd === '/search') {
@@ -931,7 +934,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 [{ text: toSmallCaps('🔙 Main Menu'), callback_data: 'menu:start', style: 'primary' as const }],
               ],
             };
-            await sendEffectMessage(chatId, chatType, `🔍 <b>${toSmallCaps('SELECT MUSIC FOR')}:</b> <code>${escapeHtml(arg)}</code>`, markup, TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.searchMusic);
+            await sendEffectMessage(chatId, chatType, `${toSmallCaps('🔍 Select Music For:')} ${escapeHtml(arg)}`, markup, TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.searchMusic);
           }
         }
       } else if (
@@ -952,7 +955,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
                 ? arg
                 : text;
         if (!query) {
-          await sendEffectMessage(chatId, chatType, `🎵 ${toSmallCaps('Provide a song name, URL, or audio file: /play <song>')}`, KEYBOARDS.mainMenu(isAdmin), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic, 180);
+          await sendEffectMessage(chatId, chatType, `🎵 ${toSmallCaps('Provide a song name, URL, or audio file: /play <song>')}`, KEYBOARDS.mainMenu(isAdmin), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic);
         } else {
           const pRes = await callAudioBackend<{ title?: string }>('/player/play', {
             chat_id: chatId,
@@ -961,9 +964,9 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
           });
           if (pRes.ok && msg.from?.id) await callAudioBackend('/bot/stats/play', { user_id: msg.from.id }).catch(() => undefined);
           const finalText = pRes.ok
-            ? `🎧 <b>${toSmallCaps('NOW PLAYING')}</b>\n${DIVIDER}\n\n<blockquote>🎵 <b>${toSmallCaps('SONG')}:</b> ${escapeHtml(String(pRes.data?.title || query))}\n▶️ <b>${toSmallCaps('STATUS')}:</b> ${toSmallCaps('Playing')}</blockquote>`
-            : `❌ <b>${toSmallCaps('CANNOT PLAY MUSIC')}</b>\n${DIVIDER}\n\n${hasWorker ? escapeHtml(String(pRes.error || '')) : getWorkerDiagnosticText('Play Music')}`;
-          await sendEffectMessage(chatId, chatType, finalText, KEYBOARDS.player(pRes.ok), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic, 180);
+            ? `${toSmallCaps('🎧 Now Playing')}\n\n${toSmallCaps('🎵 Song:')} ${escapeHtml(String(pRes.data?.title || query))}\n${toSmallCaps('▶️ Status:')} ${toSmallCaps('Playing')}`
+            : `${toSmallCaps('❌ Cannot Play Music')}\n\n${hasWorker ? escapeHtml(String(pRes.error || '')) : getWorkerDiagnosticText('Play Music')}`;
+          await sendEffectMessage(chatId, chatType, finalText, KEYBOARDS.player(pRes.ok), TELEGRAM_EFFECTS.fire, EQUALIZER_PRESETS.playMusic);
         }
       } else if (cmd === '/volume') {
         const cleanedArg = arg.replace('%', '').trim();
@@ -981,7 +984,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
         await sendEffectMessage(
           chatId,
           chatType,
-          `🎚️ <b>${toSmallCaps('VOLUME CONTROL')}</b>\n${DIVIDER}\n\n<blockquote>🔊 <b>${toSmallCaps('GAIN')}:</b> <code>&lt;  ${nextVol.muted ? '🔇 Muted' : `🔊 ${nextVol.volume}%`}  &gt;</code>\n⚡ <b>${toSmallCaps('RANGE')}:</b> 10% – 200% (FFmpeg Real-Time)</blockquote>`,
+          `${toSmallCaps('🎚️ Volume Control')}\n\n${toSmallCaps('Current Gain:')} <  ${nextVol.muted ? `🔇 ${toSmallCaps('Muted')}` : `🔊 ${nextVol.volume}%`}  >\n${toSmallCaps('Range: 10% – 200% (FFmpeg Real-Time)')}`,
           KEYBOARDS.volume(),
           TELEGRAM_EFFECTS.fire,
           EQUALIZER_PRESETS.volume,
